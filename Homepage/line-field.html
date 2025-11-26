@@ -6,7 +6,7 @@
   <title>Line Field</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0506; min-height: 300vh; margin: 0; overflow-x: hidden; }
+    body { background: #0a0506; height: 100vh; margin: 0; overflow: hidden; }
     .container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
     canvas { display: block; width: 100%; height: 100%; }
   </style>
@@ -14,130 +14,439 @@
 <body>
   <div class="container"><canvas id="canvas"></canvas></div>
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const SVG_VIEWBOX = { width: 3074.96, height: 2018.35 };
-    const SVG_LINES = [0.12,6.26,12.4,18.54,24.67,30.81,36.95,43.09,49.22,55.36,61.5,67.63,73.77,79.91,86.05,92.18,98.32,104.46,110.59,116.73,122.87,129.01,135.14,141.28,147.42,153.55,159.69,165.83,171.97,178.1,184.24,190.38,196.51,202.65,208.79,214.93,221.06,227.2,233.34,239.47,245.61,251.75,257.89,264.02,270.16,276.3,282.43,288.57,294.71,300.85,306.98,313.12,319.26,325.39,331.53,337.67,343.81,349.94,356.08,362.22,368.35,374.49,380.63,386.77,392.9,399.04,405.18,411.31,417.45,423.59,429.73,435.86,442,448.14,454.27,460.41,466.55,472.69,478.82,484.96,491.1,497.23,503.37,509.51,515.65,521.78,527.92,534.06,540.19,546.33,552.47,558.61,564.74,570.88,577.02,583.15,589.29,595.43,601.57,607.7,613.84,619.98,626.11,632.25,638.39,644.53,650.66,656.8,662.94,669.07,675.21,681.35,687.49,693.62,699.76,705.9,712.03,718.17,724.31,730.45,736.58,742.72,748.86,754.99,761.13,767.27,773.41,779.54,785.68,791.82,797.95,804.09,810.23,816.37,822.5,828.64,834.78,840.91,847.05,853.19,859.33,865.46,871.6,877.74,883.87,890.01,896.15,902.29,908.42,914.56,920.7,926.83,932.97,939.11,945.25,951.38,957.52,963.66,969.79,975.93,982.07,988.21,994.34,1000.48,1006.62,1012.75,1018.89,1025.03,1031.17,1037.3,1043.44,1049.58,1055.71,1061.85,1067.99,1074.13,1080.26,1086.4,1092.54,1098.67,1104.81,1110.95,1117.09,1123.22,1129.36,1135.5,1141.63,1147.77,1153.91,1160.05,1166.18,1172.32,1178.46,1184.59,1190.73,1196.87,1203.01,1209.14,1215.28,1221.42,1227.55,1233.69,1239.83,1245.97,1252.1,1258.24,1264.38,1270.51,1276.65,1282.79,1288.93,1295.06,1301.2,1307.34,1313.47,1319.61,1325.75,1331.89,1338.02,1344.16,1350.3,1356.43,1362.57,1368.71,1374.85,1380.98,1387.12,1393.26,1399.39,1405.53,1411.67,1417.81,1423.94,1430.08,1436.22,1442.35,1448.49,1454.63,1460.77,1466.9,1473.04,1479.18,1485.31,1491.45,1497.59,1503.73,1509.86,1516,1522.14,1528.27,1534.41,1540.55,1546.69,1552.82,1558.96,1565.1,1571.23,1577.37,1583.51,1589.65,1595.78,1601.92,1608.06,1614.19,1620.33,1626.47,1632.61,1638.74,1644.88,1651.02,1657.15,1663.29,1669.43,1675.57,1681.7,1687.84,1693.98,1700.11,1706.25,1712.39,1718.53,1724.66,1730.8,1736.94,1743.07,1749.21,1755.35,1761.49,1767.62,1773.76,1779.9,1786.03,1792.17,1798.31,1804.45,1810.58,1816.72,1822.86,1828.99,1835.13,1841.27,1847.41,1853.54,1859.68,1865.82,1871.95,1878.09,1884.23,1890.37,1896.5,1902.64,1908.78,1914.91,1921.05,1927.19,1933.33,1939.46,1945.6,1951.74,1957.87,1964.01,1970.15,1976.29,1982.42,1988.56,1994.7,2000.83,2006.97,2013.11,2019.25,2025.38,2031.52,2037.66,2043.79,2049.93,2056.07,2062.21,2068.34,2074.48,2080.62,2086.75,2092.89,2099.03,2105.17,2111.3,2117.44,2123.58,2129.71,2135.85,2141.99,2148.13,2154.26,2160.4,2166.54,2172.67,2178.81,2184.95,2191.09,2197.22,2203.36,2209.5,2215.63,2221.77,2227.91,2234.05,2240.18,2246.32,2252.46,2258.6,2264.73,2270.87,2277.01,2283.15,2289.28,2295.42,2301.56,2307.69,2313.83,2319.97,2326.11,2332.24,2338.38,2344.52,2350.65,2356.79,2362.93,2369.07,2375.2,2381.34,2387.48,2393.61,2399.75,2405.89,2412.03,2418.16,2424.3,2430.44,2436.57,2442.71,2448.85,2454.99,2461.12,2467.26,2473.4,2479.53,2485.67,2491.81,2497.95,2504.08,2510.22,2516.36,2522.49,2528.63,2534.77,2540.91,2547.04,2553.18,2559.32,2565.45,2571.59,2577.73,2583.87,2590,2596.14,2602.28,2608.41,2614.55,2620.69,2626.83,2632.96,2639.1,2645.24,2651.37,2657.51,2663.65,2669.79,2675.92,2682.06,2688.2,2694.33,2700.47,2706.61,2712.75,2718.88,2725.02,2731.16,2737.29,2743.43,2749.57,2755.71,2761.84,2767.98,2774.12,2780.25,2786.39,2792.53,2798.67,2804.8,2810.94,2817.08,2823.21,2829.35,2835.49,2841.63,2847.76,2853.9,2860.04,2866.17,2872.31,2878.45,2884.59,2890.72,2896.86,2903,2909.13,2915.27,2921.41,2927.55,2933.68,2939.82,2945.96,2952.09,2958.23,2964.37,2970.51,2976.64,2982.78,2988.92,2995.05,3001.19,3007.33,3013.47,3019.6,3025.74,3031.88,3038.01,3044.15,3050.29,3056.43,3062.56,3068.7,3074.84];
+    'use strict';
 
+    // ============================================================================
+    // Configuration
+    // ============================================================================
+    const CONFIG = {
+      pointsPerLine: 60,
+      color: { r: 253, g: 87, b: 75 },
+      lineWidth: 0.5,
+      cursorRadius: 180,
+      dragStrength: 16,
+      baseStrength: 300,
+      wakeLength: 200,
+      wakeLengthSquared: 200 * 200, // Pre-calculated for distance comparisons
+      velocitySmoothing: 0.15,
+      mouseSmoothing: 0.12,
+      noiseTimeScale: 0.0000008,
+      noiseAmplitude: 8,
+      driftSpeed: 0.00000002,
+      driftAmplitude: 4,
+      driftWaveLength: 0.008,
+      vanishingPointY: 0.95,
+      // Performance thresholds
+      minVelocityForWake: 0.3,
+      maxCursorDistance: 600,
+      maxCursorDistanceSquared: 600 * 600,
+      easeFactorMin: 0.002,
+      easeFactorMax: 0.02,
+      easeFactorDivisor: 800,
+      // Fluidity enhancements
+      springStrength: 0.15,        // Connection between adjacent points
+      springDamping: 0.85,          // Damping for spring effect
+      waveInfluence: 0.08,          // How much nearby lines influence each other
+      waveRadius: 80,               // Distance for wave propagation
+      waveRadiusSquared: 80 * 80,
+      verticalFlow: 0.3,            // Subtle downward current
+      flowSpeed: 0.00001,           // Speed of vertical flow
+      pointVelocityDamping: 0.92,    // Momentum persistence
+      curlStrength: 0.4,            // Rotation effect around cursor
+      turbulenceScale: 0.003        // Additional noise for turbulence
+    };
+
+    // ============================================================================
+    // Canvas Setup
+    // ============================================================================
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    // Cache color string to avoid string concatenation in render loop
+    const strokeColor = `rgba(${CONFIG.color.r},${CONFIG.color.g},${CONFIG.color.b},0.85)`;
+    const bgColor = '#0a0506';
+
+    // ============================================================================
+    // Noise Generator (Simplex Noise)
+    // ============================================================================
     const noise = (() => {
       const perm = new Uint8Array(512);
-      for (let i = 0; i < 256; i++) perm[i] = perm[i + 256] = Math.floor(Math.random() * 256);
-      const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
-      function dot(g, x, y) { return g[0] * x + g[1] * y; }
-      function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-      function lerp(a, b, t) { return a + t * (b - a); }
-      return function(x, y) {
-        const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
-        x -= Math.floor(x); y -= Math.floor(y);
-        const u = fade(x), v = fade(y), A = perm[X] + Y, B = perm[X + 1] + Y;
-        return lerp(lerp(dot(grad3[perm[A] % 12], x, y), dot(grad3[perm[B] % 12], x - 1, y), u),
-          lerp(dot(grad3[perm[A + 1] % 12], x, y - 1), dot(grad3[perm[B + 1] % 12], x - 1, y - 1), u), v);
+      for (let i = 0; i < 256; i++) {
+        perm[i] = perm[i + 256] = Math.floor(Math.random() * 256);
+      }
+      
+      const grad3 = [
+        [1,1,0], [-1,1,0], [1,-1,0], [-1,-1,0],
+        [1,0,1], [-1,0,1], [1,0,-1], [-1,0,-1],
+        [0,1,1], [0,-1,1], [0,1,-1], [0,-1,-1]
+      ];
+      
+      const dot = (g, x, y) => g[0] * x + g[1] * y;
+      const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+      const lerp = (a, b, t) => a + t * (b - a);
+      
+      return (x, y) => {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+        
+        const u = fade(x);
+        const v = fade(y);
+        const A = perm[X] + Y;
+        const B = perm[X + 1] + Y;
+        
+        return lerp(
+          lerp(
+            dot(grad3[perm[A] % 12], x, y),
+            dot(grad3[perm[B] % 12], x - 1, y),
+            u
+          ),
+          lerp(
+            dot(grad3[perm[A + 1] % 12], x, y - 1),
+            dot(grad3[perm[B + 1] % 12], x - 1, y - 1),
+            u
+          ),
+          v
+        );
       };
     })();
 
-    const CONFIG = {
-      pointsPerLine: 60, color: { r: 253, g: 87, b: 75 }, lineWidth: 0.5,
-      cursorRadius: 180, dragStrength: 8, baseStrength: 150, wakeLength: 120, wakeFalloff: 0.6, velocitySmoothing: 0.15, easing: 0.004,
-      noiseScale: 0.002, noiseTimeScale: 0.0000008, noiseAmplitude: 8,
-      driftSpeed: 0.00000002, driftAmplitude: 4, driftWaveLength: 0.008,
-      vanishingPointY: 0.95,
-    };
+    // ============================================================================
+    // State Management
+    // ============================================================================
+    let width = 0;
+    let height = 0;
+    let lines = [];
+    
+    const mouse = { x: -1000, y: -1000 };
+    const targetMouse = { x: -1000, y: -1000 };
+    const prevMouse = { x: -1000, y: -1000 };
+    const velocity = { x: 0, y: 0 };
+    
+    let time = 0;
+    const vanishingPoint = { x: 0, y: 0 };
 
-    let width, height, scale = 1, lines = [];
-    let mouse = { x: -1000, y: -1000 }, targetMouse = { x: -1000, y: -1000 }, prevMouse = { x: -1000, y: -1000 };
-    let velocity = { x: 0, y: 0 }, time = 0, vanishingPoint = { x: 0, y: 0 };
-
+    // ============================================================================
+    // Line Initialization
+    // ============================================================================
     function initLines() {
-      lines = []; scale = width / SVG_VIEWBOX.width;
-      for (let i = 0; i < SVG_LINES.length; i += 4) {
-        const canvasX = SVG_LINES[i] * scale;
-        const line = { points: [], restPoints: [], index: i, normalizedX: i / SVG_LINES.length };
-        for (let j = 0; j < CONFIG.pointsPerLine; j++) {
-          const t = j / (CONFIG.pointsPerLine - 1), y = t * height;
-          line.restPoints.push({ x: canvasX, y, normalizedY: t });
-          line.points.push({ x: canvasX, y });
+      lines = [];
+      
+      // Calculate target line count (40% more than original)
+      const originalLineCount = 200; // Approximate base count
+      const targetLineCount = Math.ceil(originalLineCount * 1.4);
+      const spacing = width / (targetLineCount + 1);
+      
+      const pointsPerLine = CONFIG.pointsPerLine;
+      const pointStep = 1 / (pointsPerLine - 1);
+      
+      for (let i = 0; i < targetLineCount; i++) {
+        const canvasX = spacing * (i + 1);
+        const normalizedX = (i + 1) / (targetLineCount + 1);
+        
+        const line = {
+          points: [],
+          restPoints: [],
+          index: i,
+          normalizedX
+        };
+        
+        // Pre-calculate point positions
+        for (let j = 0; j < pointsPerLine; j++) {
+          const t = j * pointStep;
+          const y = t * height;
+          const point = { x: canvasX, y, vx: 0, vy: 0 }; // Add velocity for momentum
+          const restPoint = { x: canvasX, y, normalizedY: t };
+          
+          line.points.push(point);
+          line.restPoints.push(restPoint);
         }
+        
         lines.push(line);
       }
     }
 
+    // ============================================================================
+    // Resize Handler
+    // ============================================================================
     function resize() {
       const dpr = window.devicePixelRatio || 1;
-      width = window.innerWidth; height = window.innerHeight;
-      canvas.width = width * dpr; canvas.height = height * dpr;
-      canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+      width = window.innerWidth;
+      height = window.innerHeight;
+      
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      
       ctx.scale(dpr, dpr);
-      vanishingPoint.x = width / 2; vanishingPoint.y = height * CONFIG.vanishingPointY;
+      vanishingPoint.x = width / 2;
+      vanishingPoint.y = height * CONFIG.vanishingPointY;
+      
       initLines();
     }
 
+    // ============================================================================
+    // Point Update Logic
+    // ============================================================================
     function updatePoints() {
-      prevMouse.x = mouse.x; prevMouse.y = mouse.y;
-      mouse.x += (targetMouse.x - mouse.x) * 0.12; mouse.y += (targetMouse.y - mouse.y) * 0.12;
-      velocity.x += (mouse.x - prevMouse.x - velocity.x) * CONFIG.velocitySmoothing;
-      velocity.y += (mouse.y - prevMouse.y - velocity.y) * CONFIG.velocitySmoothing;
-
+      // Update mouse position with smoothing
+      prevMouse.x = mouse.x;
+      prevMouse.y = mouse.y;
+      mouse.x += (targetMouse.x - mouse.x) * CONFIG.mouseSmoothing;
+      mouse.y += (targetMouse.y - mouse.y) * CONFIG.mouseSmoothing;
+      
+      // Update velocity
+      const mouseDeltaX = mouse.x - prevMouse.x;
+      const mouseDeltaY = mouse.y - prevMouse.y;
+      velocity.x += (mouseDeltaX - velocity.x) * CONFIG.velocitySmoothing;
+      velocity.y += (mouseDeltaY - velocity.y) * CONFIG.velocitySmoothing;
+      
+      // Pre-calculate time-based values
+      const timeNoiseX = time * CONFIG.noiseTimeScale;
+      const timeNoiseY = timeNoiseX * 0.7;
+      const timeDrift = time * CONFIG.driftSpeed * 1000;
+      const velMagSquared = velocity.x * velocity.x + velocity.y * velocity.y;
+      const velMag = Math.sqrt(velMagSquared);
+      const hasVelocity = velMag > CONFIG.minVelocityForWake;
+      
+      // Cache constants
+      const wakeLength = CONFIG.wakeLength;
+      const wakeLengthSquared = CONFIG.wakeLengthSquared;
+      const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared;
+      const noiseAmp = CONFIG.noiseAmplitude;
+      const driftAmp = CONFIG.driftAmplitude;
+      const baseStrength = CONFIG.baseStrength;
+      const dragStrength = CONFIG.dragStrength;
+      
+      // Pre-calculate vertical flow effect
+      const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
+      
+      // Update each line
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        const normalizedX = line.normalizedX;
+        const noiseX = normalizedX * 3 + timeNoiseX;
+        
+        // Pre-calculate noise and drift for this line
+        const driftBase = Math.sin(normalizedX * Math.PI * 6 + timeDrift) * driftAmp;
+        
+        // Get neighboring lines for wave influence
+        const prevLine = i > 0 ? lines[i - 1] : null;
+        const nextLine = i < lines.length - 1 ? lines[i + 1] : null;
+        const waveStrength = CONFIG.waveInfluence;
+        
+        // Update each point in the line
         for (let j = 0; j < line.points.length; j++) {
-          const rest = line.restPoints[j], point = line.points[j];
-
-          const noiseVal = noise(line.normalizedX * 3 + time * CONFIG.noiseTimeScale, rest.normalizedY * 2 + time * CONFIG.noiseTimeScale * 0.7);
-          const driftBase = Math.sin(line.normalizedX * Math.PI * 6 + time * CONFIG.driftSpeed * 1000) * CONFIG.driftAmplitude;
-          const dxFromCursor = rest.x - mouse.x, dyFromCursor = rest.y - mouse.y;
-          const distFromCursor = Math.sqrt(dxFromCursor * dxFromCursor + dyFromCursor * dyFromCursor);
-          const ambientScale = 0.3 + Math.max(0, 1 - distFromCursor / 600) * 2;
-          const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
-          const ambientX = (noiseVal * CONFIG.noiseAmplitude + driftBase) * ambientScale * dirX;
-
-          const dx = rest.x - mouse.x, dy = rest.y - mouse.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          let dragOffsetX = 0, dragOffsetY = 0;
-          const velMag = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-          if (dist < CONFIG.wakeLength && velMag > 0.3) {
-            const distFalloff = Math.pow(1 - dist / CONFIG.wakeLength, 2);
-            const pushX = dx / Math.max(dist, 1), pushY = dy / Math.max(dist, 1);
-            const dragInfluence = Math.min(velMag / 5, 1);
-            const blendedX = pushX * (1 - dragInfluence * 0.7) + velocity.x / velMag * dragInfluence;
-            const blendedY = pushY * (1 - dragInfluence * 0.7) + velocity.y / velMag * dragInfluence;
-            const strength = (CONFIG.baseStrength * Math.pow(Math.min(velMag / 4, 1), 2) + velMag * CONFIG.dragStrength) * distFalloff;
-            dragOffsetX = blendedX * strength; dragOffsetY = blendedY * strength * 0.4;
+          const rest = line.restPoints[j];
+          const point = line.points[j];
+          
+          // Calculate wave influence from neighboring lines at this point height
+          let neighborInfluenceX = 0;
+          if (prevLine && nextLine && j < prevLine.points.length && j < nextLine.points.length) {
+            const prevPoint = prevLine.points[j];
+            const nextPoint = nextLine.points[j];
+            const dxPrev = prevPoint.x - rest.x;
+            const dxNext = nextPoint.x - rest.x;
+            neighborInfluenceX = (dxPrev + dxNext) * waveStrength * 0.5;
           }
-
-          const targetX = rest.x + ambientX + dragOffsetX, targetY = rest.y + dragOffsetY;
-          const diffX = targetX - point.x, diffY = targetY - point.y;
-          const easeFactor = 0.01;
-          point.x += diffX * easeFactor; point.y += diffY * easeFactor;
+          
+          // Calculate ambient noise effect with turbulence
+          const noiseVal = noise(noiseX, rest.normalizedY * 2 + timeNoiseY);
+          const turbulenceVal = noise(
+            normalizedX * 5 + time * CONFIG.turbulenceScale,
+            rest.normalizedY * 3 + time * CONFIG.turbulenceScale * 0.5
+          ) * 0.3;
+          
+          // Distance from cursor (using squared distance to avoid sqrt)
+          const dxFromCursor = rest.x - mouse.x;
+          const dyFromCursor = rest.y - mouse.y;
+          const distFromCursorSquared = dxFromCursor * dxFromCursor + dyFromCursor * dyFromCursor;
+          
+          // Ambient effect (only calculate if cursor is nearby)
+          let ambientX = 0;
+          let ambientY = verticalFlowOffset; // Add vertical flow
+          
+          if (distFromCursorSquared < maxCursorDistSquared) {
+            const distFromCursor = Math.sqrt(distFromCursorSquared);
+            const ambientScale = 0.3 + (1 - distFromCursor / CONFIG.maxCursorDistance) * 2;
+            const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
+            const dirY = distFromCursor > 0 ? dyFromCursor / distFromCursor : 0;
+            
+            // Add curl/rotation effect around cursor
+            const curlAngle = Math.atan2(dyFromCursor, dxFromCursor) + Math.PI / 2;
+            const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * ambientScale;
+            const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * ambientScale;
+            
+            ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * ambientScale * dirX + curlX;
+            ambientY += curlY * 0.5;
+          } else {
+            // Subtle ambient flow even when cursor is far
+            ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * 0.3;
+          }
+          
+          // Add wave influence from neighbors
+          ambientX += neighborInfluenceX;
+          
+          // Calculate drag effect
+          const dx = rest.x - mouse.x;
+          const dy = rest.y - mouse.y;
+          const distSquared = dx * dx + dy * dy;
+          
+          let dragOffsetX = 0;
+          let dragOffsetY = 0;
+          
+          if (distSquared < wakeLengthSquared && hasVelocity) {
+            const dist = Math.sqrt(distSquared);
+            const distFalloff = Math.pow(1 - dist / wakeLength, 2);
+            
+            const invDist = 1 / Math.max(dist, 1);
+            const pushX = dx * invDist;
+            const pushY = dy * invDist;
+            
+            const dragInfluence = Math.min(velMag / 5, 1);
+            const invVelMag = 1 / velMag;
+            const blendedX = pushX * (1 - dragInfluence * 0.7) + velocity.x * invVelMag * dragInfluence;
+            const blendedY = pushY * (1 - dragInfluence * 0.7) + velocity.y * invVelMag * dragInfluence;
+            
+            const velFactor = Math.min(velMag / 4, 1);
+            const strength = (baseStrength * velFactor * velFactor + velMag * dragStrength) * distFalloff;
+            
+            dragOffsetX = blendedX * strength;
+            dragOffsetY = blendedY * strength * 0.4;
+          }
+          
+          // Calculate target position
+          const targetX = rest.x + ambientX + dragOffsetX;
+          const targetY = rest.y + ambientY + dragOffsetY;
+          
+          // Spring connection to adjacent points for fluidity
+          let springForceX = 0;
+          let springForceY = 0;
+          
+          if (j > 0) {
+            const prevPoint = line.points[j - 1];
+            const springDX = prevPoint.x - point.x;
+            const springDY = prevPoint.y - point.y;
+            springForceX += springDX * CONFIG.springStrength;
+            springForceY += springDY * CONFIG.springStrength;
+          }
+          
+          if (j < line.points.length - 1) {
+            const nextPoint = line.points[j + 1];
+            const springDX = nextPoint.x - point.x;
+            const springDY = nextPoint.y - point.y;
+            springForceX += springDX * CONFIG.springStrength;
+            springForceY += springDY * CONFIG.springStrength;
+          }
+          
+          // Apply momentum (velocity persistence)
+          point.vx *= CONFIG.pointVelocityDamping;
+          point.vy *= CONFIG.pointVelocityDamping;
+          
+          // Calculate forces
+          const diffX = targetX - point.x;
+          const diffY = targetY - point.y;
+          const diffSquared = diffX * diffX + diffY * diffY;
+          const diffMag = Math.sqrt(diffSquared);
+          
+          // Adaptive easing for smoother motion
+          const easeFactor = CONFIG.easeFactorMin + Math.min(diffMag / CONFIG.easeFactorDivisor, CONFIG.easeFactorMax);
+          
+          // Add spring forces to velocity
+          point.vx += (diffX * easeFactor + springForceX) * (1 - CONFIG.springDamping);
+          point.vy += (diffY * easeFactor + springForceY) * (1 - CONFIG.springDamping);
+          
+          // Apply velocity with damping
+          point.x += point.vx;
+          point.y += point.vy;
+          
+          // Also apply direct easing for responsiveness
+          point.x += diffX * easeFactor * CONFIG.springDamping;
+          point.y += diffY * easeFactor * CONFIG.springDamping;
         }
       }
     }
 
+    // ============================================================================
+    // Rendering
+    // ============================================================================
     function drawLine(points) {
       if (points.length < 2) return;
-      ctx.strokeStyle = 'rgba(' + CONFIG.color.r + ',' + CONFIG.color.g + ',' + CONFIG.color.b + ', 0.85)';
+      
+      ctx.strokeStyle = strokeColor;
       ctx.lineWidth = CONFIG.lineWidth;
-      ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length - 1; i++) {
-        const midX = (points[i].x + points[i + 1].x) / 2, midY = (points[i].y + points[i + 1].y) / 2;
-        ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      
+      const lastIndex = points.length - 1;
+      for (let i = 1; i < lastIndex; i++) {
+        const current = points[i];
+        const next = points[i + 1];
+        const midX = (current.x + next.x) * 0.5;
+        const midY = (current.y + next.y) * 0.5;
+        ctx.quadraticCurveTo(current.x, current.y, midX, midY);
       }
-      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y); ctx.stroke();
+      
+      const last = points[lastIndex];
+      ctx.lineTo(last.x, last.y);
+      ctx.stroke();
     }
 
     function render(timestamp) {
       time = timestamp;
-      ctx.fillStyle = '#0a0506'; ctx.fillRect(0, 0, width, height);
+      
+      // Clear canvas
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Update and draw
       updatePoints();
-      for (let i = 0; i < lines.length; i++) drawLine(lines[i].points);
+      
+      for (let i = 0; i < lines.length; i++) {
+        drawLine(lines[i].points);
+      }
+      
       requestAnimationFrame(render);
     }
 
+    // ============================================================================
+    // Event Handlers
+    // ============================================================================
+    function handleMouseMove(e) {
+      targetMouse.x = e.clientX;
+      targetMouse.y = e.clientY;
+    }
+
+    function handleMouseLeave() {
+      targetMouse.x = -1000;
+      targetMouse.y = -1000;
+    }
+
+    function handleTouchMove(e) {
+      if (e.touches.length > 0) {
+        targetMouse.x = e.touches[0].clientX;
+        targetMouse.y = e.touches[0].clientY;
+      }
+    }
+
+    function handleTouchEnd() {
+      targetMouse.x = -1000;
+      targetMouse.y = -1000;
+    }
+
+    // ============================================================================
+    // Initialization
+    // ============================================================================
     window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', function(e) { targetMouse.x = e.clientX; targetMouse.y = e.clientY; });
-    window.addEventListener('mouseleave', function() { targetMouse.x = -1000; targetMouse.y = -1000; });
-    window.addEventListener('touchmove', function(e) { if (e.touches.length > 0) { targetMouse.x = e.touches[0].clientX; targetMouse.y = e.touches[0].clientY; } }, { passive: true });
-    window.addEventListener('touchend', function() { targetMouse.x = -1000; targetMouse.y = -1000; });
-    resize(); requestAnimationFrame(render);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd);
+
+    resize();
+    requestAnimationFrame(render);
   </script>
 </body>
 </html>
