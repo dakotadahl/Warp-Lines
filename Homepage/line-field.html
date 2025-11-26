@@ -126,6 +126,116 @@
     
     let time = 0;
     const vanishingPoint = { x: 0, y: 0 };
+    
+    // Cursor simulation state
+    let cursorSimulation = {
+      active: false,
+      startTime: 0,
+      duration: 30000, // 30 seconds
+      waypoints: [],
+      currentPathIndex: 0,
+      pathProgress: 0,
+      isUserControlling: false
+    };
+
+    // ============================================================================
+    // Cursor Path Simulation
+    // ============================================================================
+    function generateCursorPath() {
+      const waypointCount = 8 + Math.floor(Math.random() * 5); // 8-12 waypoints
+      const waypoints = [];
+      const margin = 100; // Keep cursor away from edges
+      
+      for (let i = 0; i < waypointCount; i++) {
+        waypoints.push({
+          x: margin + Math.random() * (width - margin * 2),
+          y: margin + Math.random() * (height - margin * 2),
+          // Vary speed between waypoints for natural feel
+          duration: 2000 + Math.random() * 3000 // 2-5 seconds per segment
+        });
+      }
+      
+      return waypoints;
+    }
+    
+    function easeInOutCubic(t) {
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+    
+    function updateCursorSimulation(currentTime) {
+      if (!cursorSimulation.active || cursorSimulation.isUserControlling) return;
+      
+      const elapsed = currentTime - cursorSimulation.startTime;
+      
+      // Check if simulation should end and restart
+      if (elapsed >= cursorSimulation.duration) {
+        // Restart with a new path
+        cursorSimulation.waypoints = generateCursorPath();
+        cursorSimulation.startTime = currentTime;
+        cursorSimulation.currentPathIndex = 0;
+        cursorSimulation.pathProgress = 0;
+        
+        // Start at first waypoint
+        if (cursorSimulation.waypoints.length > 0) {
+          targetMouse.x = cursorSimulation.waypoints[0].x;
+          targetMouse.y = cursorSimulation.waypoints[0].y;
+        }
+        return;
+      }
+      
+      // Calculate which path segment we're on
+      let accumulatedTime = 0;
+      let segmentIndex = 0;
+      
+      for (let i = 0; i < cursorSimulation.waypoints.length - 1; i++) {
+        const segmentDuration = cursorSimulation.waypoints[i].duration;
+        if (elapsed < accumulatedTime + segmentDuration) {
+          segmentIndex = i;
+          break;
+        }
+        accumulatedTime += segmentDuration;
+      }
+      
+      // Get current and next waypoint
+      const currentWaypoint = cursorSimulation.waypoints[segmentIndex];
+      const nextWaypoint = cursorSimulation.waypoints[segmentIndex + 1];
+      
+      if (!nextWaypoint) {
+        // Last waypoint - hold position briefly then restart or end
+        targetMouse.x = currentWaypoint.x;
+        targetMouse.y = currentWaypoint.y;
+        return;
+      }
+      
+      // Calculate progress through current segment (0 to 1)
+      const segmentElapsed = elapsed - accumulatedTime;
+      const segmentProgress = Math.min(segmentElapsed / currentWaypoint.duration, 1);
+      
+      // Apply easing for smooth motion
+      const easedProgress = easeInOutCubic(segmentProgress);
+      
+      // Interpolate between waypoints
+      targetMouse.x = currentWaypoint.x + (nextWaypoint.x - currentWaypoint.x) * easedProgress;
+      targetMouse.y = currentWaypoint.y + (nextWaypoint.y - currentWaypoint.y) * easedProgress;
+    }
+    
+    function startCursorSimulation() {
+      if (cursorSimulation.active) return;
+      
+      cursorSimulation.waypoints = generateCursorPath();
+      cursorSimulation.startTime = performance.now();
+      cursorSimulation.active = true;
+      cursorSimulation.currentPathIndex = 0;
+      cursorSimulation.pathProgress = 0;
+      
+      // Start at first waypoint
+      if (cursorSimulation.waypoints.length > 0) {
+        targetMouse.x = cursorSimulation.waypoints[0].x;
+        targetMouse.y = cursorSimulation.waypoints[0].y;
+      }
+    }
 
     // ============================================================================
     // Line Initialization
@@ -185,12 +295,21 @@
       vanishingPoint.y = height * CONFIG.vanishingPointY;
       
       initLines();
+      
+      // Regenerate cursor path on resize if simulation is active
+      if (cursorSimulation.active && !cursorSimulation.isUserControlling) {
+        cursorSimulation.waypoints = generateCursorPath();
+        cursorSimulation.startTime = performance.now();
+      }
     }
 
     // ============================================================================
     // Point Update Logic
     // ============================================================================
     function updatePoints() {
+      // Update cursor simulation if active
+      updateCursorSimulation(performance.now());
+      
       // Update mouse position with smoothing
       prevMouse.x = mouse.x;
       prevMouse.y = mouse.y;
@@ -415,16 +534,27 @@
     // Event Handlers
     // ============================================================================
     function handleMouseMove(e) {
+      cursorSimulation.isUserControlling = true;
+      cursorSimulation.active = false; // Stop simulation when user takes control
       targetMouse.x = e.clientX;
       targetMouse.y = e.clientY;
     }
 
     function handleMouseLeave() {
+      cursorSimulation.isUserControlling = false;
       targetMouse.x = -1000;
       targetMouse.y = -1000;
+      // Optionally restart simulation after a delay
+      setTimeout(() => {
+        if (!cursorSimulation.isUserControlling) {
+          startCursorSimulation();
+        }
+      }, 2000);
     }
 
     function handleTouchMove(e) {
+      cursorSimulation.isUserControlling = true;
+      cursorSimulation.active = false;
       if (e.touches.length > 0) {
         targetMouse.x = e.touches[0].clientX;
         targetMouse.y = e.touches[0].clientY;
@@ -432,8 +562,14 @@
     }
 
     function handleTouchEnd() {
+      cursorSimulation.isUserControlling = false;
       targetMouse.x = -1000;
       targetMouse.y = -1000;
+      setTimeout(() => {
+        if (!cursorSimulation.isUserControlling) {
+          startCursorSimulation();
+        }
+      }, 2000);
     }
 
     // ============================================================================
@@ -446,6 +582,12 @@
     window.addEventListener('touchend', handleTouchEnd);
 
     resize();
+    
+    // Start cursor simulation after a brief delay
+    setTimeout(() => {
+      startCursorSimulation();
+    }, 1000);
+    
     requestAnimationFrame(render);
   </script>
 </body>
