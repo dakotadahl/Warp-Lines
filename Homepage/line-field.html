@@ -40,12 +40,12 @@
       cursorRadius: 180, dragStrength: 8, baseStrength: 150, wakeLength: 120, wakeFalloff: 0.6, velocitySmoothing: 0.15, easing: 0.004,
       noiseScale: 0.002, noiseTimeScale: 0.0000008, noiseAmplitude: 8,
       driftSpeed: 0.00000002, driftAmplitude: 4, driftWaveLength: 0.008,
-      scrollConvergeDistance: 150, vanishingPointY: 0.95,
+      vanishingPointY: 0.95,
     };
 
     let width, height, scale = 1, lines = [];
     let mouse = { x: -1000, y: -1000 }, targetMouse = { x: -1000, y: -1000 }, prevMouse = { x: -1000, y: -1000 };
-    let velocity = { x: 0, y: 0 }, time = 0, scrollProgress = 0, vanishingPoint = { x: 0, y: 0 };
+    let velocity = { x: 0, y: 0 }, time = 0, vanishingPoint = { x: 0, y: 0 };
 
     function initLines() {
       lines = []; scale = width / SVG_VIEWBOX.width;
@@ -81,17 +81,6 @@
         const line = lines[i];
         for (let j = 0; j < line.points.length; j++) {
           const rest = line.restPoints[j], point = line.points[j];
-          const verticalProgress = rest.y / height;
-          const horizontalDist = Math.abs(rest.x - vanishingPoint.x) / (width / 2);
-          const staggerDelay = horizontalDist * 0.4;
-          const staggeredProgress = Math.max(0, (scrollProgress - staggerDelay) / (1 - staggerDelay));
-          const curveFactor = Math.pow(verticalProgress, 1.2);
-          const convergeFactor = staggeredProgress * curveFactor;
-          const yScrollProgress = Math.min(staggeredProgress * 2, 1);
-          const yConvergeFactor = yScrollProgress * curveFactor;
-          const convergedX = rest.x + (vanishingPoint.x - rest.x) * Math.min(convergeFactor * 2, 1);
-          const convergedY = rest.y + (vanishingPoint.y - rest.y) * Math.min(yConvergeFactor * 2, 1);
-          const effectFade = 1 - scrollProgress;
 
           const noiseVal = noise(line.normalizedX * 3 + time * CONFIG.noiseTimeScale, rest.normalizedY * 2 + time * CONFIG.noiseTimeScale * 0.7);
           const driftBase = Math.sin(line.normalizedX * Math.PI * 6 + time * CONFIG.driftSpeed * 1000) * CONFIG.driftAmplitude;
@@ -99,25 +88,25 @@
           const distFromCursor = Math.sqrt(dxFromCursor * dxFromCursor + dyFromCursor * dyFromCursor);
           const ambientScale = 0.3 + Math.max(0, 1 - distFromCursor / 600) * 2;
           const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
-          const ambientX = (noiseVal * CONFIG.noiseAmplitude + driftBase) * ambientScale * dirX * effectFade;
+          const ambientX = (noiseVal * CONFIG.noiseAmplitude + driftBase) * ambientScale * dirX;
 
-          const dx = convergedX - mouse.x, dy = convergedY - mouse.y;
+          const dx = rest.x - mouse.x, dy = rest.y - mouse.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           let dragOffsetX = 0, dragOffsetY = 0;
           const velMag = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-          if (dist < CONFIG.wakeLength && velMag > 0.3 && effectFade > 0.01) {
+          if (dist < CONFIG.wakeLength && velMag > 0.3) {
             const distFalloff = Math.pow(1 - dist / CONFIG.wakeLength, 2);
             const pushX = dx / Math.max(dist, 1), pushY = dy / Math.max(dist, 1);
             const dragInfluence = Math.min(velMag / 5, 1);
             const blendedX = pushX * (1 - dragInfluence * 0.7) + velocity.x / velMag * dragInfluence;
             const blendedY = pushY * (1 - dragInfluence * 0.7) + velocity.y / velMag * dragInfluence;
-            const strength = (CONFIG.baseStrength * Math.pow(Math.min(velMag / 4, 1), 2) + velMag * CONFIG.dragStrength) * distFalloff * effectFade;
+            const strength = (CONFIG.baseStrength * Math.pow(Math.min(velMag / 4, 1), 2) + velMag * CONFIG.dragStrength) * distFalloff;
             dragOffsetX = blendedX * strength; dragOffsetY = blendedY * strength * 0.4;
           }
 
-          const targetX = convergedX + ambientX + dragOffsetX, targetY = convergedY + dragOffsetY;
+          const targetX = rest.x + ambientX + dragOffsetX, targetY = rest.y + dragOffsetY;
           const diffX = targetX - point.x, diffY = targetY - point.y;
-          const easeFactor = 0.002 + Math.min(Math.sqrt(diffX * diffX + diffY * diffY) / 800, 0.02);
+          const easeFactor = 0.01;
           point.x += diffX * easeFactor; point.y += diffY * easeFactor;
         }
       }
@@ -139,14 +128,6 @@
       time = timestamp;
       ctx.fillStyle = '#0a0506'; ctx.fillRect(0, 0, width, height);
       updatePoints();
-      if (scrollProgress > 0.1) {
-        const glowIntensity = Math.pow(scrollProgress, 2), glowRadius = 150 + scrollProgress * 100;
-        const gradient = ctx.createRadialGradient(vanishingPoint.x, vanishingPoint.y, 0, vanishingPoint.x, vanishingPoint.y, glowRadius);
-        gradient.addColorStop(0, 'rgba(255, 100, 60, ' + (0.4 * glowIntensity) + ')');
-        gradient.addColorStop(0.3, 'rgba(255, 60, 40, ' + (0.2 * glowIntensity) + ')');
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
-      }
       for (let i = 0; i < lines.length; i++) drawLine(lines[i].points);
       requestAnimationFrame(render);
     }
@@ -156,11 +137,6 @@
     window.addEventListener('mouseleave', function() { targetMouse.x = -1000; targetMouse.y = -1000; });
     window.addEventListener('touchmove', function(e) { if (e.touches.length > 0) { targetMouse.x = e.touches[0].clientX; targetMouse.y = e.touches[0].clientY; } }, { passive: true });
     window.addEventListener('touchend', function() { targetMouse.x = -1000; targetMouse.y = -1000; });
-    window.addEventListener('scroll', function() {
-      var rawProgress = Math.min(window.scrollY / (CONFIG.scrollConvergeDistance * height / 100), 1);
-      scrollProgress = Math.pow(rawProgress, 20);
-    });
-
     resize(); requestAnimationFrame(render);
   </script>
 </body>

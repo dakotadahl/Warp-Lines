@@ -17,3 +17,5 @@ Open `Homepage/line-field.html` in a web browser. Scroll to see the convergence 
 
 See [SCROLL_EFFECT_OVERVIEW.md](SCROLL_EFFECT_OVERVIEW.md) for a detailed explanation of the scroll transition logic, animation timing, and interactive inputs.
 
+
+
