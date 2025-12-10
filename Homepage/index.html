@@ -1218,6 +1218,8 @@
       let permissionRequested = false;
       
       const requestOnInteraction = (e) => {
+        console.log('Interaction event detected:', e.type, 'target:', e.target);
+        
         // Only request if:
         // 1. Not already enabled (permission not granted yet)
         // 2. Not already requested in this session
@@ -1225,6 +1227,7 @@
         if (!gyroEnabled && !permissionRequested) {
           permissionRequested = true;
           console.log('User interaction detected - automatically requesting gyroscope permission');
+          console.log('Event details:', { type: e.type, target: e.target, currentTarget: e.currentTarget });
           
           // Update button state if button exists (optional)
           const gyroBtn = document.getElementById('gyroBtn');
@@ -1250,17 +1253,29 @@
           // Clean up all listeners after first interaction attempt
           const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
           events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction);
-            document.removeEventListener(eventType, requestOnInteraction);
+            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            const container = document.querySelector('.container');
+            if (container) {
+              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            }
           });
         } else if (gyroEnabled) {
           // Permission already granted, clean up listeners
           console.log('Gyroscope already enabled, skipping permission request');
           const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
           events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction);
-            document.removeEventListener(eventType, requestOnInteraction);
+            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            const container = document.querySelector('.container');
+            if (container) {
+              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            }
           });
+        } else if (permissionRequested) {
+          console.log('Permission already requested in this session, skipping');
         }
       };
       
@@ -1277,10 +1292,27 @@
       // This works completely independently of the button - no button required
       if (!gyroEnabled) {
         console.log('Setting up automatic gyroscope permission request on user interaction');
+        console.log('needsPermission:', needsPermission);
+        console.log('gyroEnabled:', gyroEnabled);
+        
         interactionEvents.forEach(eventType => {
           // Add to both window and document to catch all interactions
-          window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true });
-          document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true });
+          // Use capture phase to catch events before they reach other handlers
+          window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+          document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+          // Also add to body and the container to catch all possible interactions
+          document.body.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+          const container = document.querySelector('.container');
+          if (container) {
+            container.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+          }
+        });
+        
+        console.log('Automatic permission request listeners attached to:', {
+          window: true,
+          document: true,
+          body: true,
+          container: !!document.querySelector('.container')
         });
       } else {
         console.log('Gyroscope already enabled, skipping automatic permission request setup');
@@ -1291,8 +1323,13 @@
         if (gyroEnabled) {
           const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
           events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction);
-            document.removeEventListener(eventType, requestOnInteraction);
+            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            const container = document.querySelector('.container');
+            if (container) {
+              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+            }
           });
         }
       };
