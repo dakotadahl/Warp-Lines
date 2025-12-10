@@ -1204,41 +1204,101 @@
     
     autoEnableGyroscope();
     
-    // Automatically request gyroscope permission on first user interaction (iOS requires user gesture)
+    // Automatically request gyroscope permission on first user interaction anywhere on the page
+    // iOS requires a user gesture to request permission, so we trigger on any interaction
     if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
         typeof DeviceOrientationEvent.requestPermission === 'function') {
       let permissionRequested = false;
       
       const requestOnInteraction = (e) => {
+        // Only request if:
+        // 1. Not already enabled (permission not granted yet)
+        // 2. Not already requested in this session
+        // 3. Permission wasn't already detected as granted
         if (!gyroEnabled && !permissionRequested) {
           permissionRequested = true;
-          console.log('Automatically requesting gyroscope permission on user interaction');
+          console.log('User interaction detected - automatically requesting gyroscope permission');
+          
+          // Update button state
+          const gyroBtn = document.getElementById('gyroBtn');
+          if (gyroBtn) {
+            gyroBtn.textContent = 'Requesting Permission...';
+            gyroBtn.disabled = true;
+          }
+          
+          // Request permission
           try {
             requestGyroPermission();
-            const gyroBtn = document.getElementById('gyroBtn');
-            if (gyroBtn && gyroBtn.textContent === 'Enable Gyroscope') {
-              gyroBtn.textContent = 'Requesting Permission...';
-              gyroBtn.disabled = true;
-            }
           } catch (error) {
             console.error('Error in automatic permission request:', error);
-            // If automatic request fails, user can still use the button
-            const gyroBtn = document.getElementById('gyroBtn');
+            // If automatic request fails, re-enable button for manual request
             if (gyroBtn) {
+              gyroBtn.textContent = 'Enable Gyroscope';
               gyroBtn.disabled = false;
             }
+            permissionRequested = false; // Allow retry
           }
-          // Remove listeners after first interaction
-          window.removeEventListener('touchstart', requestOnInteraction);
-          window.removeEventListener('touchend', requestOnInteraction);
-          window.removeEventListener('click', requestOnInteraction);
+          
+          // Clean up all listeners after first interaction attempt
+          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+          events.forEach(eventType => {
+            window.removeEventListener(eventType, requestOnInteraction);
+            document.removeEventListener(eventType, requestOnInteraction);
+          });
+        } else if (gyroEnabled) {
+          // Permission already granted, clean up listeners
+          console.log('Gyroscope already enabled, skipping permission request');
+          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+          events.forEach(eventType => {
+            window.removeEventListener(eventType, requestOnInteraction);
+            document.removeEventListener(eventType, requestOnInteraction);
+          });
         }
       };
       
-      // Request on first touch or click anywhere on the page
-      window.addEventListener('touchstart', requestOnInteraction, { once: true, passive: true });
-      window.addEventListener('touchend', requestOnInteraction, { once: true, passive: true });
-      window.addEventListener('click', requestOnInteraction, { once: true });
+      // Listen for any touch interaction anywhere on the page
+      // Using touch-specific event types for mobile devices
+      const interactionEvents = [
+        'touchstart',   // Touch start - primary touch event
+        'touchend',     // Touch end - when finger lifts
+        'touchmove',    // Touch move - in case start/end are prevented
+        'pointerdown'   // Pointer events (covers touch, pen, etc. on modern browsers)
+      ];
+      
+      // Only add listeners if permission isn't already granted
+      if (!gyroEnabled) {
+        interactionEvents.forEach(eventType => {
+          // Add to both window and document to catch all interactions
+          window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true });
+          document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true });
+        });
+      } else {
+        console.log('Gyroscope already enabled, skipping automatic permission request setup');
+      }
+      
+      // Also set up a check to clean up listeners if permission gets granted elsewhere
+      const checkAndCleanup = () => {
+        if (gyroEnabled) {
+          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+          events.forEach(eventType => {
+            window.removeEventListener(eventType, requestOnInteraction);
+            document.removeEventListener(eventType, requestOnInteraction);
+          });
+        }
+      };
+      
+      // Check periodically and clean up if permission is granted
+      const cleanupInterval = setInterval(() => {
+        if (gyroEnabled) {
+          checkAndCleanup();
+          clearInterval(cleanupInterval);
+        }
+      }, 500);
+      
+      // Also clean up after a reasonable timeout (10 seconds)
+      setTimeout(() => {
+        clearInterval(cleanupInterval);
+      }, 10000);
     }
     
     resize();
