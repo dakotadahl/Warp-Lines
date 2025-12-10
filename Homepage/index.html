@@ -7,7 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0a0506; height: 100vh; margin: 0; overflow: hidden; }
-    .container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+    .container { position: fixed; top: 0; left: 0; width: 100vw; height: 120vh; }
     canvas { display: block; width: 100%; height: 100%; }
     
     .gyro-control {
@@ -383,7 +383,7 @@
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       width = window.innerWidth;
-      height = window.innerHeight;
+      height = window.innerHeight * 1.2; // 120% of viewport height
       
       canvas.width = width * dpr;
       canvas.height = height * dpr;
