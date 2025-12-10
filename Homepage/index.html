@@ -1204,39 +1204,40 @@
     
     autoEnableGyroscope();
     
-    // Automatically request gyroscope permission on page load (iOS requires user gesture, so this will trigger on first interaction)
+    // Automatically request gyroscope permission on first user interaction (iOS requires user gesture)
     if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // Try to request immediately (may fail on iOS without user gesture, but worth trying)
-      setTimeout(() => {
-        if (!gyroEnabled) {
-          console.log('Automatically requesting gyroscope permission on page load');
-          requestGyroPermission();
-          const gyroBtn = document.getElementById('gyroBtn');
-          if (gyroBtn) {
-            gyroBtn.textContent = 'Requesting Permission...';
-            gyroBtn.disabled = true;
-          }
-        }
-      }, 1000); // Small delay to ensure page is loaded
+      let permissionRequested = false;
       
-      // Also request on first user interaction (touch/click) as fallback for iOS
-      const requestOnInteraction = () => {
-        if (!gyroEnabled) {
-          console.log('Requesting gyroscope permission on user interaction');
-          requestGyroPermission();
-          const gyroBtn = document.getElementById('gyroBtn');
-          if (gyroBtn && gyroBtn.textContent === 'Enable Gyroscope') {
-            gyroBtn.textContent = 'Requesting Permission...';
-            gyroBtn.disabled = true;
+      const requestOnInteraction = (e) => {
+        if (!gyroEnabled && !permissionRequested) {
+          permissionRequested = true;
+          console.log('Automatically requesting gyroscope permission on user interaction');
+          try {
+            requestGyroPermission();
+            const gyroBtn = document.getElementById('gyroBtn');
+            if (gyroBtn && gyroBtn.textContent === 'Enable Gyroscope') {
+              gyroBtn.textContent = 'Requesting Permission...';
+              gyroBtn.disabled = true;
+            }
+          } catch (error) {
+            console.error('Error in automatic permission request:', error);
+            // If automatic request fails, user can still use the button
+            const gyroBtn = document.getElementById('gyroBtn');
+            if (gyroBtn) {
+              gyroBtn.disabled = false;
+            }
           }
           // Remove listeners after first interaction
           window.removeEventListener('touchstart', requestOnInteraction);
+          window.removeEventListener('touchend', requestOnInteraction);
           window.removeEventListener('click', requestOnInteraction);
         }
       };
       
+      // Request on first touch or click anywhere on the page
       window.addEventListener('touchstart', requestOnInteraction, { once: true, passive: true });
+      window.addEventListener('touchend', requestOnInteraction, { once: true, passive: true });
       window.addEventListener('click', requestOnInteraction, { once: true });
     }
     
