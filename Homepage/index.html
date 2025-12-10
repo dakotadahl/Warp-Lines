@@ -239,14 +239,14 @@
     };
 
     const GYRO_LIQUID_CONFIG = {
-      tiltSensitivity: 0.0012, // Increased from 0.0008 for more responsive acceleration
-      damping: 0.92, // Increased from 0.88 for less damping, more responsiveness
-      springStrength: 0.00025, // Increased from 0.00015 for stronger spring to target
-      maxVelocity: 15, // Increased from 12 for faster movement
+      tiltSensitivity: 0.002, // Dramatically increased for more dramatic acceleration
+      damping: 0.94, // Less damping for more dramatic movement
+      springStrength: 0.0004, // Much stronger spring for snappier response
+      maxVelocity: 25, // Much faster max velocity for dramatic movement
       overshootFactor: 1.15,
       oscillationDamping: 0.92,
-      waveFrequency: 0.003,
-      waveAmplitude: 0.3
+      waveFrequency: 0.004, // Faster oscillation
+      waveAmplitude: 0.5 // Larger wave amplitude for more dramatic effect
     };
 
     // ============================================================================
@@ -425,17 +425,21 @@
         targetMouse.y = gyroPosition.y;
       }
       
-      // Update mouse position with smoothing
+      // Update mouse position with smoothing (more responsive for gyroscope)
       prevMouse.x = mouse.x;
       prevMouse.y = mouse.y;
-      mouse.x += (targetMouse.x - mouse.x) * CONFIG.mouseSmoothing;
-      mouse.y += (targetMouse.y - mouse.y) * CONFIG.mouseSmoothing;
+      const mouseSmoothing = useGyro && gyroEnabled && gyroCalibrated ? 
+        CONFIG.mouseSmoothing * 1.4 : CONFIG.mouseSmoothing; // Faster, more responsive movement
+      mouse.x += (targetMouse.x - mouse.x) * mouseSmoothing;
+      mouse.y += (targetMouse.y - mouse.y) * mouseSmoothing;
       
-      // Update velocity
+      // Update velocity (more responsive for gyroscope)
       const mouseDeltaX = mouse.x - prevMouse.x;
       const mouseDeltaY = mouse.y - prevMouse.y;
-      velocity.x += (mouseDeltaX - velocity.x) * CONFIG.velocitySmoothing;
-      velocity.y += (mouseDeltaY - velocity.y) * CONFIG.velocitySmoothing;
+      const velocitySmoothing = useGyro && gyroEnabled && gyroCalibrated ? 
+        CONFIG.velocitySmoothing * 1.3 : CONFIG.velocitySmoothing; // Faster velocity response
+      velocity.x += (mouseDeltaX - velocity.x) * velocitySmoothing;
+      velocity.y += (mouseDeltaY - velocity.y) * velocitySmoothing;
       
       // Pre-calculate time-based values
       const timeNoiseX = time * CONFIG.noiseTimeScale;
@@ -445,14 +449,15 @@
       const velMag = Math.sqrt(velMagSquared);
       const hasVelocity = velMag > CONFIG.minVelocityForWake;
       
-      // Cache constants
-      const wakeLength = CONFIG.wakeLength;
-      const wakeLengthSquared = CONFIG.wakeLengthSquared;
-      const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared;
+      // Cache constants with gyroscope multipliers for more dramatic effect
+      const gyroMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 1.8 : 1.0; // 80% stronger effects
+      const wakeLength = CONFIG.wakeLength * (useGyro ? 1.3 : 1.0); // Larger wake area
+      const wakeLengthSquared = wakeLength * wakeLength;
+      const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared * (useGyro ? 1.4 : 1.0); // Larger influence area
       const noiseAmp = CONFIG.noiseAmplitude;
       const driftAmp = CONFIG.driftAmplitude;
-      const baseStrength = CONFIG.baseStrength;
-      const dragStrength = CONFIG.dragStrength;
+      const baseStrength = CONFIG.baseStrength * gyroMultiplier; // Stronger base effect
+      const dragStrength = CONFIG.dragStrength * gyroMultiplier; // Stronger drag
       
       // Pre-calculate vertical flow effect
       const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
@@ -508,10 +513,11 @@
             const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
             const dirY = distFromCursor > 0 ? dyFromCursor / distFromCursor : 0;
             
-            // Add curl/rotation effect around cursor
+            // Add curl/rotation effect around cursor (more dramatic for gyro)
+            const curlStrengthMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 1.6 : 1.0;
             const curlAngle = Math.atan2(dyFromCursor, dxFromCursor) + Math.PI / 2;
-            const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * ambientScale;
-            const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * ambientScale;
+            const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * curlStrengthMultiplier * ambientScale;
+            const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * curlStrengthMultiplier * ambientScale;
             
             ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * ambientScale * dirX + curlX;
             ambientY += curlY * 0.5;
@@ -547,8 +553,10 @@
             const velFactor = Math.min(velMag / 4, 1);
             const strength = (baseStrength * velFactor * velFactor + velMag * dragStrength) * distFalloff;
             
+            // More dramatic vertical drag for gyroscope
+            const verticalDragMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 0.7 : 0.4;
             dragOffsetX = blendedX * strength;
-            dragOffsetY = blendedY * strength * 0.4;
+            dragOffsetY = blendedY * strength * verticalDragMultiplier;
           }
           
           // Calculate target position
@@ -902,17 +910,17 @@
       const centerX = width / 2;
       const centerY = height / 2;
       
-      // Increased sensitivity for more responsive movement
-      const gammaRange = 40; // Reduced from 50 for more sensitivity
+      // Dramatically increased sensitivity and range for more dramatic effect
+      const gammaRange = 30; // Much more sensitive - smaller tilt = bigger movement
       const gammaNormalized = Math.max(-1, Math.min(1, deltaGamma / gammaRange));
-      const targetX = centerX + gammaNormalized * width * 0.5; // Increased from 0.45
+      const targetX = centerX + gammaNormalized * width * 0.7; // Increased range to 70% of screen
       
-      const betaRange = 50; // Reduced from 70 for more sensitivity
+      const betaRange = 35; // Much more sensitive
       const betaNormalized = Math.max(-1, Math.min(1, deltaBeta / betaRange));
-      const targetY = centerY + betaNormalized * height * 0.5; // Increased from 0.45
+      const targetY = centerY + betaNormalized * height * 0.7; // Increased range to 70% of screen
       
-      const alphaInfluence = 0.2; // Increased from 0.15
-      const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 80)); // Reduced from 100 for more sensitivity
+      const alphaInfluence = 0.3; // Increased from 0.2 for more dramatic rotation effect
+      const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 60)); // Much more sensitive
       
       gyroTarget.x = targetX + alphaNormalized * width * alphaInfluence;
       gyroTarget.y = targetY;
