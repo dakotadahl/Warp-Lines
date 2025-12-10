@@ -237,10 +237,10 @@
     };
 
     const GYRO_LIQUID_CONFIG = {
-      tiltSensitivity: 0.0008,
-      damping: 0.88,
-      springStrength: 0.00015,
-      maxVelocity: 12,
+      tiltSensitivity: 0.0012, // Increased from 0.0008 for more responsive acceleration
+      damping: 0.92, // Increased from 0.88 for less damping, more responsiveness
+      springStrength: 0.00025, // Increased from 0.00015 for stronger spring to target
+      maxVelocity: 15, // Increased from 12 for faster movement
       overshootFactor: 1.15,
       oscillationDamping: 0.92,
       waveFrequency: 0.003,
@@ -418,8 +418,9 @@
       updateGyroscopePhysics();
       
       if (useGyro && gyroEnabled && gyroCalibrated) {
-        targetMouse.x = gyroTarget.x;
-        targetMouse.y = gyroTarget.y;
+        // Use gyroPosition (smoothed physics position) instead of gyroTarget
+        targetMouse.x = gyroPosition.x;
+        targetMouse.y = gyroPosition.y;
       }
       
       // Update mouse position with smoothing
@@ -899,16 +900,17 @@
       const centerX = width / 2;
       const centerY = height / 2;
       
-      const gammaRange = 50;
+      // Increased sensitivity for more responsive movement
+      const gammaRange = 40; // Reduced from 50 for more sensitivity
       const gammaNormalized = Math.max(-1, Math.min(1, deltaGamma / gammaRange));
-      const targetX = centerX + gammaNormalized * width * 0.45;
+      const targetX = centerX + gammaNormalized * width * 0.5; // Increased from 0.45
       
-      const betaRange = 70;
+      const betaRange = 50; // Reduced from 70 for more sensitivity
       const betaNormalized = Math.max(-1, Math.min(1, deltaBeta / betaRange));
-      const targetY = centerY + betaNormalized * height * 0.45;
+      const targetY = centerY + betaNormalized * height * 0.5; // Increased from 0.45
       
-      const alphaInfluence = 0.15;
-      const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 100));
+      const alphaInfluence = 0.2; // Increased from 0.15
+      const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 80)); // Reduced from 100 for more sensitivity
       
       gyroTarget.x = targetX + alphaNormalized * width * alphaInfluence;
       gyroTarget.y = targetY;
@@ -962,8 +964,8 @@
       gyroPosition.x = Math.max(0, Math.min(width, gyroPosition.x));
       gyroPosition.y = Math.max(0, Math.min(height, gyroPosition.y));
       
-      gyroTarget.x = gyroPosition.x;
-      gyroTarget.y = gyroPosition.y;
+      // Don't overwrite gyroTarget - it's set by handleDeviceOrientation based on device tilt
+      // gyroPosition will smoothly follow gyroTarget through the physics simulation
     }
 
     // ============================================================================
