@@ -6,21 +6,40 @@
   <title>Line Field</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0506; height: 100vh; margin: 0; overflow: visible; }
+    body { background: #0a0506; height: 100vh; height: 100dvh; margin: 0; overflow: visible; }
     .container { 
       position: fixed; 
       left: 0; 
       width: 100vw; 
       height: 120vh;
-      top: -20vh; /* Desktop: overflow 20vh at top, 0vh at bottom */
+      height: 120dvh; /* Use dynamic viewport height for mobile */
+      top: -20vh;
+      top: -20dvh; /* Desktop: overflow 20vh at top, 0vh at bottom */
     }
     canvas { display: block; width: 100%; height: 100%; }
     
-    /* Mobile: overflow at both ends */
+    /* Mobile: overflow at both ends, extend behind address bar */
     @media (hover: none) and (pointer: coarse) {
       .container {
-        top: -10vh; /* Overflow 10vh at top */
-        height: 120vh; /* Overflow 10vh at bottom (120vh - 100vh viewport - 10vh top = 10vh bottom) */
+        top: -30vh; /* Larger overflow to go behind address bar */
+        top: -30dvh; /* Use dynamic viewport height */
+        height: 150vh; /* Increased height to cover address bar area */
+        height: 150dvh;
+      }
+    }
+    
+    /* Fallback for browsers that don't support dvh */
+    @supports not (height: 100dvh) {
+      body { height: 100vh; }
+      .container { 
+        height: 120vh;
+        top: -20vh;
+      }
+      @media (hover: none) and (pointer: coarse) {
+        .container {
+          top: -30vh;
+          height: 150vh;
+        }
       }
     }
     
@@ -397,7 +416,12 @@
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       width = window.innerWidth;
-      height = window.innerHeight * 1.2; // 120% of viewport height
+      
+      // Detect mobile and use larger height multiplier to account for address bar
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                       (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+      const heightMultiplier = isMobile ? 1.5 : 1.2; // 150% on mobile, 120% on desktop
+      height = window.innerHeight * heightMultiplier;
       
       canvas.width = width * dpr;
       canvas.height = height * dpr;
