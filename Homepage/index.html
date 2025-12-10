@@ -6,9 +6,23 @@
   <title>Line Field</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0506; height: 100vh; margin: 0; overflow: hidden; }
-    .container { position: fixed; top: 0; left: 0; width: 100vw; height: 120vh; }
+    body { background: #0a0506; height: 100vh; margin: 0; overflow: visible; }
+    .container { 
+      position: fixed; 
+      left: 0; 
+      width: 100vw; 
+      height: 120vh;
+      top: -20vh; /* Desktop: overflow 20vh at top, 0vh at bottom */
+    }
     canvas { display: block; width: 100%; height: 100%; }
+    
+    /* Mobile: overflow at both ends */
+    @media (hover: none) and (pointer: coarse) {
+      .container {
+        top: -10vh; /* Overflow 10vh at top */
+        height: 120vh; /* Overflow 10vh at bottom (120vh - 100vh viewport - 10vh top = 10vh bottom) */
+      }
+    }
     
     .gyro-control {
       position: fixed;
