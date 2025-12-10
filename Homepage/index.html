@@ -1167,8 +1167,7 @@
             enableGyroscope(true);
           }, 100);
         } else if (isIOS && needsPermission) {
-          // On iOS, check if we can receive events (permission already granted)
-          // Try adding a temporary listener to check
+          // On iOS, first check if permission is already granted
           const testHandler = (e) => {
             if (e.alpha !== null || e.beta !== null || e.gamma !== null) {
               console.log('iOS: Permission already granted, events are working');
@@ -1183,20 +1182,64 @@
             }
           };
           
-          // Check after a short delay
+          // Check if permission already granted
           setTimeout(() => {
             window.addEventListener('deviceorientation', testHandler, { passive: true });
-            // Remove test handler after 2 seconds if no events received
+            // Remove test handler after 1 second if no events received
             setTimeout(() => {
               window.removeEventListener('deviceorientation', testHandler);
-              console.log('iOS: No deviceorientation events received, permission needed');
-            }, 2000);
+              // If no events, automatically request permission
+              console.log('iOS: No deviceorientation events received, requesting permission automatically');
+              requestGyroPermission();
+              const gyroBtn = document.getElementById('gyroBtn');
+              if (gyroBtn) {
+                gyroBtn.textContent = 'Requesting Permission...';
+                gyroBtn.disabled = true;
+              }
+            }, 1000);
           }, 500);
         }
       }
     }
     
     autoEnableGyroscope();
+    
+    // Automatically request gyroscope permission on page load (iOS requires user gesture, so this will trigger on first interaction)
+    if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      // Try to request immediately (may fail on iOS without user gesture, but worth trying)
+      setTimeout(() => {
+        if (!gyroEnabled) {
+          console.log('Automatically requesting gyroscope permission on page load');
+          requestGyroPermission();
+          const gyroBtn = document.getElementById('gyroBtn');
+          if (gyroBtn) {
+            gyroBtn.textContent = 'Requesting Permission...';
+            gyroBtn.disabled = true;
+          }
+        }
+      }, 1000); // Small delay to ensure page is loaded
+      
+      // Also request on first user interaction (touch/click) as fallback for iOS
+      const requestOnInteraction = () => {
+        if (!gyroEnabled) {
+          console.log('Requesting gyroscope permission on user interaction');
+          requestGyroPermission();
+          const gyroBtn = document.getElementById('gyroBtn');
+          if (gyroBtn && gyroBtn.textContent === 'Enable Gyroscope') {
+            gyroBtn.textContent = 'Requesting Permission...';
+            gyroBtn.disabled = true;
+          }
+          // Remove listeners after first interaction
+          window.removeEventListener('touchstart', requestOnInteraction);
+          window.removeEventListener('click', requestOnInteraction);
+        }
+      };
+      
+      window.addEventListener('touchstart', requestOnInteraction, { once: true, passive: true });
+      window.addEventListener('click', requestOnInteraction, { once: true });
+    }
+    
     resize();
     requestAnimationFrame(render);
     
