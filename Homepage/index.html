@@ -715,28 +715,33 @@
           permissionPromise
             .then(response => {
               console.log('Permission response:', response);
-              const gyroBtn = document.getElementById('gyroBtn');
               if (response === 'granted') {
                 enableGyroscope(true); // Auto-enable on permission grant
-                if (gyroBtn) {
-                  gyroBtn.textContent = 'Calibrating...';
-                  gyroBtn.disabled = false;
-                }
                 // Add event listener after permission is granted
                 // Remove first in case it was already added
                 window.removeEventListener('deviceorientation', handleDeviceOrientation);
                 window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
                 console.log('Device orientation permission granted');
+                
+                // Update button if it exists (optional)
+                const gyroBtn = document.getElementById('gyroBtn');
+                if (gyroBtn) {
+                  gyroBtn.textContent = 'Calibrating...';
+                  gyroBtn.disabled = false;
+                }
               } else {
+                console.warn('Device orientation permission denied, response:', response);
+                // Update button if it exists (optional)
+                const gyroBtn = document.getElementById('gyroBtn');
                 if (gyroBtn) {
                   gyroBtn.textContent = 'Permission Denied - Tap to Retry';
                   gyroBtn.disabled = false;
                 }
-                console.warn('Device orientation permission denied, response:', response);
               }
             })
             .catch(error => {
               console.error('Error requesting device orientation permission:', error);
+              // Update button if it exists (optional)
               const gyroBtn = document.getElementById('gyroBtn');
               if (gyroBtn) {
                 gyroBtn.textContent = 'Error - Tap to Retry';
@@ -745,11 +750,13 @@
             });
         } catch (error) {
           console.error('Exception calling requestPermission:', error);
+          // Update button if it exists (optional)
           const gyroBtn = document.getElementById('gyroBtn');
           if (gyroBtn) {
             gyroBtn.textContent = 'Exception - Check Console';
             gyroBtn.disabled = false;
           }
+          throw error; // Re-throw so caller knows it failed
         }
       } else {
         console.log('requestPermission not available, enabling directly');
@@ -1219,24 +1226,25 @@
           permissionRequested = true;
           console.log('User interaction detected - automatically requesting gyroscope permission');
           
-          // Update button state
+          // Update button state if button exists (optional)
           const gyroBtn = document.getElementById('gyroBtn');
           if (gyroBtn) {
             gyroBtn.textContent = 'Requesting Permission...';
             gyroBtn.disabled = true;
           }
           
-          // Request permission
+          // Request permission (works independently of button)
           try {
             requestGyroPermission();
           } catch (error) {
             console.error('Error in automatic permission request:', error);
-            // If automatic request fails, re-enable button for manual request
+            // Allow retry on error
+            permissionRequested = false;
+            // Update button if it exists (optional)
             if (gyroBtn) {
               gyroBtn.textContent = 'Enable Gyroscope';
               gyroBtn.disabled = false;
             }
-            permissionRequested = false; // Allow retry
           }
           
           // Clean up all listeners after first interaction attempt
@@ -1265,8 +1273,10 @@
         'pointerdown'   // Pointer events (covers touch, pen, etc. on modern browsers)
       ];
       
-      // Only add listeners if permission isn't already granted
+      // Set up automatic permission request on user interaction
+      // This works completely independently of the button - no button required
       if (!gyroEnabled) {
+        console.log('Setting up automatic gyroscope permission request on user interaction');
         interactionEvents.forEach(eventType => {
           // Add to both window and document to catch all interactions
           window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true });
