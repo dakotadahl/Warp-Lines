@@ -425,21 +425,17 @@
         targetMouse.y = gyroPosition.y;
       }
       
-      // Update mouse position with smoothing (more responsive for gyroscope)
+      // Update mouse position with smoothing
       prevMouse.x = mouse.x;
       prevMouse.y = mouse.y;
-      const mouseSmoothing = useGyro && gyroEnabled && gyroCalibrated ? 
-        CONFIG.mouseSmoothing * 1.4 : CONFIG.mouseSmoothing; // Faster, more responsive movement
-      mouse.x += (targetMouse.x - mouse.x) * mouseSmoothing;
-      mouse.y += (targetMouse.y - mouse.y) * mouseSmoothing;
+      mouse.x += (targetMouse.x - mouse.x) * CONFIG.mouseSmoothing;
+      mouse.y += (targetMouse.y - mouse.y) * CONFIG.mouseSmoothing;
       
-      // Update velocity (more responsive for gyroscope)
+      // Update velocity
       const mouseDeltaX = mouse.x - prevMouse.x;
       const mouseDeltaY = mouse.y - prevMouse.y;
-      const velocitySmoothing = useGyro && gyroEnabled && gyroCalibrated ? 
-        CONFIG.velocitySmoothing * 1.3 : CONFIG.velocitySmoothing; // Faster velocity response
-      velocity.x += (mouseDeltaX - velocity.x) * velocitySmoothing;
-      velocity.y += (mouseDeltaY - velocity.y) * velocitySmoothing;
+      velocity.x += (mouseDeltaX - velocity.x) * CONFIG.velocitySmoothing;
+      velocity.y += (mouseDeltaY - velocity.y) * CONFIG.velocitySmoothing;
       
       // Pre-calculate time-based values
       const timeNoiseX = time * CONFIG.noiseTimeScale;
@@ -449,15 +445,14 @@
       const velMag = Math.sqrt(velMagSquared);
       const hasVelocity = velMag > CONFIG.minVelocityForWake;
       
-      // Cache constants with gyroscope multipliers for more dramatic effect
-      const gyroMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 1.8 : 1.0; // 80% stronger effects
-      const wakeLength = CONFIG.wakeLength * (useGyro ? 1.3 : 1.0); // Larger wake area
-      const wakeLengthSquared = wakeLength * wakeLength;
-      const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared * (useGyro ? 1.4 : 1.0); // Larger influence area
+      // Cache constants
+      const wakeLength = CONFIG.wakeLength;
+      const wakeLengthSquared = CONFIG.wakeLengthSquared;
+      const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared;
       const noiseAmp = CONFIG.noiseAmplitude;
       const driftAmp = CONFIG.driftAmplitude;
-      const baseStrength = CONFIG.baseStrength * gyroMultiplier; // Stronger base effect
-      const dragStrength = CONFIG.dragStrength * gyroMultiplier; // Stronger drag
+      const baseStrength = CONFIG.baseStrength;
+      const dragStrength = CONFIG.dragStrength;
       
       // Pre-calculate vertical flow effect
       const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
@@ -552,10 +547,8 @@
             const velFactor = Math.min(velMag / 4, 1);
             const strength = (baseStrength * velFactor * velFactor + velMag * dragStrength) * distFalloff;
             
-            // More dramatic vertical drag for gyroscope
-            const verticalDragMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 0.7 : 0.4;
             dragOffsetX = blendedX * strength;
-            dragOffsetY = blendedY * strength * verticalDragMultiplier;
+            dragOffsetY = blendedY * strength * 0.4;
           }
           
           // Calculate target position
