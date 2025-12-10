@@ -246,7 +246,7 @@
       overshootFactor: 1.15,
       oscillationDamping: 0.92,
       waveFrequency: 0.004, // Faster oscillation
-      waveAmplitude: 0.5 // Larger wave amplitude for more dramatic effect
+      waveAmplitude: 0.4 // Moderate wave amplitude (split difference)
     };
 
     // ============================================================================
@@ -513,11 +513,10 @@
             const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
             const dirY = distFromCursor > 0 ? dyFromCursor / distFromCursor : 0;
             
-            // Add curl/rotation effect around cursor (more dramatic for gyro)
-            const curlStrengthMultiplier = useGyro && gyroEnabled && gyroCalibrated ? 1.6 : 1.0;
+            // Add curl/rotation effect around cursor
             const curlAngle = Math.atan2(dyFromCursor, dxFromCursor) + Math.PI / 2;
-            const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * curlStrengthMultiplier * ambientScale;
-            const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * curlStrengthMultiplier * ambientScale;
+            const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * ambientScale;
+            const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * ambientScale;
             
             ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * ambientScale * dirX + curlX;
             ambientY += curlY * 0.5;
