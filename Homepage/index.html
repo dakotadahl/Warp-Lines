@@ -25,6 +25,13 @@
       }
     }
     
+    /* Always show on iOS for permission request */
+    @supports (-webkit-touch-callout: none) {
+      .gyro-control {
+        display: block;
+      }
+    }
+    
     .gyro-btn {
       background: rgba(253, 87, 75, 0.2);
       border: 1px solid rgba(253, 87, 75, 0.5);
@@ -633,13 +640,36 @@
           typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(response => {
+            const gyroBtn = document.getElementById('gyroBtn');
             if (response === 'granted') {
-              enableGyroscope();
+              enableGyroscope(true); // Auto-enable on permission grant
+              if (gyroBtn) {
+                gyroBtn.textContent = 'Calibrating...';
+                gyroBtn.disabled = false;
+              }
+              // Add event listener after permission is granted
+              // Remove first in case it was already added
+              window.removeEventListener('deviceorientation', handleDeviceOrientation);
+              window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
+              console.log('Device orientation permission granted');
+            } else {
+              if (gyroBtn) {
+                gyroBtn.textContent = 'Permission Denied - Tap to Retry';
+                gyroBtn.disabled = false;
+              }
+              console.warn('Device orientation permission denied');
             }
           })
-          .catch(console.error);
+          .catch(error => {
+            console.error('Error requesting device orientation permission:', error);
+            const gyroBtn = document.getElementById('gyroBtn');
+            if (gyroBtn) {
+              gyroBtn.textContent = 'Error - Tap to Retry';
+              gyroBtn.disabled = false;
+            }
+          });
       } else {
-        enableGyroscope();
+        enableGyroscope(true);
       }
     }
 
@@ -650,6 +680,7 @@
       gyroValidationSamples = [];
       gyroValidationStartTime = Date.now();
       isAutoEnabled = autoEnable;
+      console.log('Gyroscope enabled, autoEnable:', autoEnable);
     }
 
     function calibrateGyroscope(alpha, beta, gamma) {
@@ -657,8 +688,10 @@
       gyroCalibration.beta = beta || 0;
       gyroCalibration.gamma = gamma || 0;
       gyroCalibrated = true;
+      console.log('Gyroscope calibrated:', { alpha, beta, gamma });
       if (isAutoEnabled) {
         useGyro = true;
+        console.log('Gyroscope auto-enabled');
       }
     }
 
@@ -765,6 +798,7 @@
     }
 
     function handleDeviceOrientation(e) {
+      // On iOS, if we receive an event, permission is granted
       if (!gyroEnabled) {
         const alpha = e.alpha;
         const beta = e.beta;
@@ -776,6 +810,11 @@
         
         if (hasValidData) {
           enableGyroscope(true);
+          const gyroBtn = document.getElementById('gyroBtn');
+          if (gyroBtn) {
+            gyroBtn.textContent = 'Enable Gyroscope';
+            gyroBtn.disabled = false;
+          }
         } else {
           return;
         }
@@ -933,7 +972,17 @@
     window.addEventListener('mouseleave', handleMouseLeave);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
-    window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
+    
+    // Only add deviceorientation listener if permission is already granted or not required
+    // On iOS, we'll add it after permission is granted
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const needsPermission = isIOS && typeof DeviceOrientationEvent !== 'undefined' && 
+                            typeof DeviceOrientationEvent.requestPermission === 'function';
+    
+    if (!needsPermission) {
+      // Non-iOS or older iOS - add listener immediately
+      window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
+    }
     
     // Gyroscope button setup
     const gyroBtn = document.getElementById('gyroBtn');
@@ -942,11 +991,21 @@
     let statusCheckInterval = null;
     
     if (gyroBtn) {
+      // Update button text for iOS
+      if (needsPermission) {
+        gyroBtn.textContent = 'Enable Gyroscope (iOS)';
+      }
+      
       gyroBtn.addEventListener('click', () => {
         if (!gyroEnabled) {
-          requestGyroPermission();
-          gyroBtn.textContent = 'Validating...';
-          gyroBtn.disabled = true;
+          if (needsPermission) {
+            requestGyroPermission();
+            gyroBtn.textContent = 'Requesting Permission...';
+            gyroBtn.disabled = true;
+          } else {
+            enableGyroscope(true);
+            gyroBtn.textContent = 'Enable Gyroscope';
+          }
         } else {
           useGyro = !useGyro;
           gyroBtn.classList.toggle('active', useGyro);
@@ -991,16 +1050,11 @@
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                          (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
         
-        if (isMobile) {
-          const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-          
-          if (isIOS && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            console.log('iOS detected - gyroscope will auto-enable when permission is granted');
-          } else {
-            setTimeout(() => {
-              enableGyroscope(true);
-            }, 100);
-          }
+        if (isMobile && !needsPermission) {
+          // Auto-enable for non-iOS mobile devices
+          setTimeout(() => {
+            enableGyroscope(true);
+          }, 100);
         }
       }
     }
