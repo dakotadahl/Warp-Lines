@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button Component - Webflow Ready</title>
+  <style>
+    /* SVG Noise Filter for Grain Texture */
+    .noise-filter {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+    
+    /* Button Component Styles - Copy to Webflow Custom Code */
+    
+    /* Default Button State - Matching Figma Design */
+    .test-button {
+      /* Button Base Styles */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 24px 6px 24px; /* Top, Right, Bottom, Left - matching Figma */
+      background: rgba(255, 255, 255, 0.05); /* Light, almost transparent gray */
+      border: 1px solid #fd574b; /* Buttons/border color from Figma */
+      border-radius: 1000px; /* Very rounded oval shape - matching Figma */
+      color: #fd574b; /* Light reddish-orange text matching border */
+      font-family: 'GT Cinetype Trial', 'GT Cinetype', 'Courier New', monospace, sans-serif;
+      font-size: 16px;
+      font-weight: 900; /* Matching Figma weight */
+      line-height: 1.3; /* Matching Figma line-height */
+      text-transform: uppercase;
+      letter-spacing: 0.8px; /* 5px in Figma = 0.8px CSS */
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: visible; /* Allow glow to extend beyond */
+      min-width: 120px;
+      height: 40px; /* Matching Figma height */
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+      /* Subtle glow in default state - soft and diffused with grain */
+      box-shadow: 
+        0px 0px 0px 1px #fd574b,
+        0 0 10px rgba(253, 87, 75, 0.3),
+        0 0 20px rgba(253, 87, 75, 0.15);
+      /* Subtle grain texture in default state */
+      filter: url(#grain-filter);
+    }
+    
+    /* Hover State with Enhanced Multi-Layered Glow Effect */
+    .test-button:hover {
+      border-color: #fd574b; /* Keep border color consistent */
+      color: #fd574b; /* Keep text color consistent - reddish-orange */
+      /* Enhanced multi-layered glow effect with grain texture */
+      box-shadow: 
+        0px 0px 0px 1px #fd574b,
+        0 0 20px rgba(253, 87, 75, 0.6),
+        0 0 40px rgba(253, 87, 75, 0.5),
+        0 0 60px rgba(253, 87, 75, 0.4),
+        0 0 80px rgba(253, 87, 75, 0.3),
+        0 0 100px rgba(253, 87, 75, 0.2);
+      /* Enhanced brightness and grain texture */
+      filter: brightness(1.15) url(#grain-filter);
+    }
+    
+    /* Active/Pressed State */
+    .test-button:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    
+    /* Focus State for Accessibility */
+    .test-button:focus {
+      outline: 2px solid #ff6b5a;
+      outline-offset: 4px;
+    }
+    
+    /* Button Text with soft glow - subtle in default, enhanced on hover */
+    .test-button-text {
+      position: relative;
+      z-index: 1;
+      /* Subtle glow effect in default state - reddish-orange */
+      text-shadow: 
+        0 0 6px rgba(253, 87, 75, 0.4),
+        0 0 12px rgba(253, 87, 75, 0.2);
+      filter: blur(0.2px); /* Subtle text softening */
+    }
+    
+    .test-button:hover .test-button-text {
+      /* Enhanced glow on hover - more prominent and blurred */
+      text-shadow: 
+        0 0 10px rgba(253, 87, 75, 0.7),
+        0 0 20px rgba(253, 87, 75, 0.5),
+        0 0 30px rgba(253, 87, 75, 0.4),
+        0 0 40px rgba(253, 87, 75, 0.2);
+      filter: blur(0.5px); /* More blur on hover for ethereal effect */
+    }
+    
+    /* Layered glow effect with grain texture - Subtle in default, enhanced on hover */
+    /* Layer 1: Outer glow with heavy blur - subtle in default state */
+    .test-button::before {
+      content: '';
+      position: absolute;
+      top: -80px;
+      left: -80px;
+      right: -80px;
+      bottom: -80px;
+      border-radius: 1000px; /* Match button border-radius */
+      background: 
+        radial-gradient(ellipse at center, rgba(253, 87, 75, 0.2) 0%, rgba(253, 87, 75, 0.1) 30%, transparent 70%);
+      background-size: 200px 200px;
+      opacity: 0.6; /* Subtle in default state */
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(40px) url(#grain-filter);
+      mix-blend-mode: screen;
+      /* Clip grain to button shape - use mask instead of clip-path for better browser support */
+      mask-image: radial-gradient(ellipse 100% 100% at center, black 0%, black 50%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 100% 100% at center, black 0%, black 50%, transparent 70%);
+    }
+    
+    .test-button:hover::before {
+      opacity: 1.5; /* Much more intense on hover */
+    }
+    
+    /* Layer 2: Mid-range glow with medium blur and grain - subtle in default state */
+    .test-button::after {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      right: -60px;
+      bottom: -60px;
+      border-radius: 1000px; /* Match button border-radius */
+      background: 
+        radial-gradient(ellipse at center, rgba(253, 87, 75, 0.3) 0%, rgba(253, 87, 75, 0.15) 40%, transparent 70%);
+      background-size: 150px 150px;
+      opacity: 0.6; /* Subtle in default state */
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -2;
+      filter: blur(25px) url(#grain-filter);
+      mix-blend-mode: screen;
+      /* Clip grain to button shape */
+      mask-image: radial-gradient(ellipse 100% 100% at center, black 0%, black 50%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 100% 100% at center, black 0%, black 50%, transparent 70%);
+    }
+    
+    .test-button:hover::after {
+      opacity: 1.5; /* Much more intense on hover */
+    }
+    
+    /* Demo Background */
+    .demo-container {
+      background: #2c1011; /* Dark reddish-brown background */
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 40px;
+    }
+    
+    /* Demo Labels */
+    .demo-label {
+      color: rgba(255, 255, 255, 0.5);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .demo-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    
+    /* Layer 3: Inner glow with light blur and fine grain - subtle in default, enhanced on hover */
+    .demo-group::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100% + 40px);
+      height: calc(100% + 40px);
+      border-radius: 1000px; /* Match button border-radius */
+      background: 
+        radial-gradient(ellipse at center, rgba(253, 87, 75, 0.4) 0%, rgba(253, 87, 75, 0.2) 50%, transparent 80%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='glowGrain3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%23fd574b' filter='url(%23glowGrain3)' opacity='0.3'/%3E%3C/svg%3E");
+      background-size: 100px 100px;
+      opacity: 0.5; /* Subtle in default state */
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -3;
+      filter: blur(15px) url(#grain-filter);
+      mix-blend-mode: screen;
+    }
+    
+    .demo-group:hover::before {
+      opacity: 1.5; /* Much more intense on hover */
+    }
+  </style>
+</head>
+<body>
+  <!-- Demo Layout - Remove this section when copying to Webflow -->
+  <div class="demo-container">
+    <div class="demo-group">
+      <button class="test-button" type="button">
+        <span class="test-button-text">TEST</span>
+      </button>
+    </div>
+    
+    
+  </div>
+  
+  <!-- 
+  ============================================
+  WEBFLOW INTEGRATION INSTRUCTIONS
+  ============================================
+  
+  1. SVG FILTER (add to Webflow Custom Code > Body or Page Settings > Custom Code):
+     Add the SVG filter definition BEFORE your button HTML:
+     
+     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
+       <defs>
+         <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+           <feTurbulence 
+             type="fractalNoise" 
+             baseFrequency="0.9" 
+             numOctaves="4" 
+             stitchTiles="stitch"
+             result="noise"/>
+           <feGaussianBlur 
+             in="noise" 
+             stdDeviation="3" 
+             result="blurred-noise"/>
+           <feColorMatrix 
+             in="blurred-noise" 
+             type="saturate" 
+             values="0"
+             result="grayscale-noise"/>
+           <feComposite 
+             in="SourceGraphic" 
+             in2="grayscale-noise" 
+             operator="multiply"
+             result="textured"/>
+         </filter>
+       </defs>
+     </svg>
+  
+  2. HTML STRUCTURE (add to Webflow):
+     <button class="test-button" type="button">
+       <span class="test-button-text">TEST</span>
+     </button>
+  
+  3. CSS (add to Webflow Custom Code > Head or Page Settings > Custom Code):
+     Copy all styles from the <style> tag above (excluding .demo-container, .demo-label, .demo-group, .noise-filter)
+  
+  4. CUSTOMIZATION:
+     - Adjust padding, min-width, and height for size
+     - Change border-radius for shape (50px = oval)
+     - Modify #ff6b5a color values for different color scheme
+     - Adjust box-shadow values in :hover for glow intensity
+     - Change font-size, letter-spacing for typography
+     - Adjust baseFrequency in SVG filter (0.9 = fine grain, lower = coarser)
+     - Adjust numOctaves in SVG filter (4 = detailed, lower = simpler)
+  
+  5. FOR LINKS (if using as link instead of button):
+     Replace <button> with <a> tag:
+     <a href="#" class="test-button">
+       <span class="test-button-text">TEST</span>
+     </a>
+  
+  ============================================
+  -->
+</body>
+</html>

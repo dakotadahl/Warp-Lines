@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button Component - Webflow Ready</title>
+  <style>
+    /* SVG Noise Filter for Grain Texture */
+    .noise-filter {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+    
+    /* Button Component Styles - Copy to Webflow Custom Code */
+    
+    /* Default Button State */
+    .test-button {
+      /* Button Base Styles */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: rgba(20, 8, 9, 0.9); /* Darker than background for depth */
+      border: 1px solid rgba(255, 107, 90, 0.3); /* Subtle border */
+      border-radius: 50px; /* Oval shape */
+      color: #ff6b5a; /* Light reddish-orange text */
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: visible;
+      min-width: 120px;
+      height: 48px;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Hover State with Glow Effect */
+    .test-button:hover {
+      border-color: #ff6b5a;
+      color: #ff6b5a;
+      /* Glow effect using box-shadow with multiple layers for texture */
+      box-shadow: 
+        0 0 20px rgba(255, 107, 90, 0.6),
+        0 0 40px rgba(255, 107, 90, 0.4),
+        0 0 60px rgba(255, 107, 90, 0.3),
+        0 0 80px rgba(255, 107, 90, 0.2),
+        inset 0 0 20px rgba(255, 107, 90, 0.1);
+      /* Add brightness and grain texture */
+      filter: brightness(1.1) url(#grain-filter);
+    }
+    
+    /* Active/Pressed State */
+    .test-button:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    
+    /* Focus State for Accessibility */
+    .test-button:focus {
+      outline: 2px solid #ff6b5a;
+      outline-offset: 4px;
+    }
+    
+    /* Button Text with soft glow */
+    .test-button-text {
+      position: relative;
+      z-index: 1;
+      text-shadow: 
+        0 0 10px rgba(255, 107, 90, 0.5),
+        0 0 20px rgba(255, 107, 90, 0.3),
+        0 0 30px rgba(255, 107, 90, 0.2);
+      filter: blur(0.5px); /* Subtle text softening */
+    }
+    
+    .test-button:hover .test-button-text {
+      text-shadow: 
+        0 0 15px rgba(255, 107, 90, 0.7),
+        0 0 30px rgba(255, 107, 90, 0.5),
+        0 0 45px rgba(255, 107, 90, 0.3);
+    }
+    
+    /* Layered glow effect with grain texture - Layer 1: Outer glow with heavy blur */
+    .test-button::before {
+      content: '';
+      position: absolute;
+      top: -80px;
+      left: -80px;
+      right: -80px;
+      bottom: -80px;
+      border-radius: 50px;
+      background: 
+        radial-gradient(ellipse at center, rgba(255, 107, 90, 0.4) 0%, rgba(255, 107, 90, 0.2) 30%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='glowGrain1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%23ff6b5a' filter='url(%23glowGrain1)' opacity='0.3'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(40px) url(#grain-filter);
+      mix-blend-mode: screen;
+    }
+    
+    .test-button:hover::before {
+      opacity: 1;
+    }
+    
+    /* Layer 2: Mid-range glow with medium blur and grain */
+    .test-button::after {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      right: -60px;
+      bottom: -60px;
+      border-radius: 50px;
+      background: 
+        radial-gradient(ellipse at center, rgba(255, 107, 90, 0.5) 0%, rgba(255, 107, 90, 0.3) 40%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='glowGrain2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%23ff6b5a' filter='url(%23glowGrain2)' opacity='0.4'/%3E%3C/svg%3E");
+      background-size: 150px 150px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -2;
+      filter: blur(25px) url(#grain-filter);
+      mix-blend-mode: screen;
+    }
+    
+    .test-button:hover::after {
+      opacity: 1;
+    }
+    
+    /* Demo Background */
+    .demo-container {
+      background: #2c1011; /* Dark reddish-brown background */
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 40px;
+    }
+    
+    /* Demo Labels */
+    .demo-label {
+      color: rgba(255, 255, 255, 0.5);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .demo-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    
+    /* Layer 3: Inner glow with light blur and fine grain - closest to button */
+    .demo-group::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100% + 40px);
+      height: calc(100% + 40px);
+      border-radius: 50px;
+      background: 
+        radial-gradient(ellipse at center, rgba(255, 107, 90, 0.6) 0%, rgba(255, 107, 90, 0.4) 50%, transparent 80%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='glowGrain3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%23ff6b5a' filter='url(%23glowGrain3)' opacity='0.5'/%3E%3C/svg%3E");
+      background-size: 100px 100px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -3;
+      filter: blur(15px) url(#grain-filter);
+      mix-blend-mode: screen;
+    }
+    
+    .demo-group:hover::before {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG Noise Filter for Grain Texture -->
+  <svg class="noise-filter">
+    <defs>
+      <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence 
+          type="fractalNoise" 
+          baseFrequency="0.9" 
+          numOctaves="4" 
+          stitchTiles="stitch"
+          result="noise"/>
+        <feColorMatrix 
+          in="noise" 
+          type="saturate" 
+          values="0"
+          result="grayscale-noise"/>
+        <feComposite 
+          in="SourceGraphic" 
+          in2="grayscale-noise" 
+          operator="multiply"
+          result="textured"/>
+      </filter>
+    </defs>
+  </svg>
+  
+  <!-- Demo Layout - Remove this section when copying to Webflow -->
+  <div class="demo-container">
+    <div class="demo-group">
+      <div class="demo-label">Default State</div>
+      <button class="test-button" type="button">
+        <span class="test-button-text">TEST</span>
+      </button>
+    </div>
+    
+    
+  </div>
+  
+  <!-- 
+  ============================================
+  WEBFLOW INTEGRATION INSTRUCTIONS
+  ============================================
+  
+  1. SVG FILTER (add to Webflow Custom Code > Body or Page Settings > Custom Code):
+     Add the SVG filter definition BEFORE your button HTML:
+     
+     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
+       <defs>
+         <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+           <feTurbulence 
+             type="fractalNoise" 
+             baseFrequency="0.9" 
+             numOctaves="4" 
+             stitchTiles="stitch"
+             result="noise"/>
+           <feColorMatrix 
+             in="noise" 
+             type="saturate" 
+             values="0"
+             result="grayscale-noise"/>
+           <feComposite 
+             in="SourceGraphic" 
+             in2="grayscale-noise" 
+             operator="multiply"
+             result="textured"/>
+         </filter>
+       </defs>
+     </svg>
+  
+  2. HTML STRUCTURE (add to Webflow):
+     <button class="test-button" type="button">
+       <span class="test-button-text">TEST</span>
+     </button>
+  
+  3. CSS (add to Webflow Custom Code > Head or Page Settings > Custom Code):
+     Copy all styles from the <style> tag above (excluding .demo-container, .demo-label, .demo-group, .noise-filter)
+  
+  4. CUSTOMIZATION:
+     - Adjust padding, min-width, and height for size
+     - Change border-radius for shape (50px = oval)
+     - Modify #ff6b5a color values for different color scheme
+     - Adjust box-shadow values in :hover for glow intensity
+     - Change font-size, letter-spacing for typography
+     - Adjust baseFrequency in SVG filter (0.9 = fine grain, lower = coarser)
+     - Adjust numOctaves in SVG filter (4 = detailed, lower = simpler)
+  
+  5. FOR LINKS (if using as link instead of button):
+     Replace <button> with <a> tag:
+     <a href="#" class="test-button">
+       <span class="test-button-text">TEST</span>
+     </a>
+  
+  ============================================
+  -->
+</body>
+</html>
