@@ -206,11 +206,39 @@
   </div>
   -->
   <script>
-    'use strict';
+    (function() {
+      'use strict';
 
-    // ============================================================================
-    // Configuration
-    // ============================================================================
+      // ============================================================================
+      // Performance Configuration & Feature Flags
+      // ============================================================================
+      const DEBUG = false; // Set to true for development debugging
+      const log = DEBUG ? console.log.bind(console) : function() {};
+      const logError = DEBUG ? console.error.bind(console) : function() {};
+      const logWarn = DEBUG ? console.warn.bind(console) : function() {};
+
+      // Adaptive quality detection
+      const isLowEndDevice = (() => {
+        const hardwareConcurrency = navigator.hardwareConcurrency || 4;
+        const deviceMemory = navigator.deviceMemory || 4;
+        return hardwareConcurrency < 4 || deviceMemory < 4;
+      })();
+
+      // Frame rate limiting
+      let lastFrameTime = 0;
+      const targetFPS = 60;
+      const frameInterval = 1000 / targetFPS;
+
+      // Page visibility state
+      let isPaused = false;
+
+      // Dev mode update throttling
+      let devModeFrameCount = 0;
+      const DEV_MODE_UPDATE_INTERVAL = 10; // Update every 10 frames
+
+      // ============================================================================
+      // Configuration
+      // ============================================================================
     const CONFIG = {
       pointsPerLine: 60,
       color: { r: 253, g: 87, b: 75 },
@@ -259,15 +287,19 @@
       waveAmplitude: 0.4 // Moderate wave amplitude (split difference)
     };
 
-    // ============================================================================
-    // Canvas Setup
-    // ============================================================================
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    
-    // Cache color string to avoid string concatenation in render loop
-    const strokeColor = `rgba(${CONFIG.color.r},${CONFIG.color.g},${CONFIG.color.b},0.85)`;
-    const bgColor = '#0a0506';
+      // ============================================================================
+      // Canvas Setup
+      // ============================================================================
+      const canvas = document.getElementById('canvas');
+      if (!canvas) {
+        logError('Canvas element not found');
+        return;
+      }
+      const ctx = canvas.getContext('2d', { alpha: false });
+      
+      // Cache color string to avoid string concatenation in render loop
+      const strokeColor = `rgba(${CONFIG.color.r},${CONFIG.color.g},${CONFIG.color.b},0.85)`;
+      const bgColor = '#0a0506';
 
     // ============================================================================
     // Noise Generator (Simplex Noise)
@@ -350,15 +382,17 @@
     // ============================================================================
     // Line Initialization
     // ============================================================================
-    function initLines() {
-      lines = [];
-      
-      // Calculate target line count (40% more than original)
-      const originalLineCount = 200; // Approximate base count
-      const targetLineCount = Math.ceil(originalLineCount * 1.4);
-      const spacing = width / (targetLineCount + 1);
-      
-      const pointsPerLine = CONFIG.pointsPerLine;
+      function initLines() {
+        lines = [];
+        
+        // Adaptive quality: reduce complexity on low-end devices
+        const originalLineCount = 200;
+        const qualityMultiplier = isLowEndDevice ? 0.8 : 1.4; // Reduce lines on low-end
+        const targetLineCount = Math.ceil(originalLineCount * qualityMultiplier);
+        const spacing = width / (targetLineCount + 1);
+        
+        // Adaptive point count per line
+        const pointsPerLine = isLowEndDevice ? Math.floor(CONFIG.pointsPerLine * 0.8) : CONFIG.pointsPerLine;
       const pointStep = 1 / (pointsPerLine - 1);
       
       for (let i = 0; i < targetLineCount; i++) {
@@ -387,10 +421,10 @@
       }
     }
 
-    // ============================================================================
-    // Resize Handler
-    // ============================================================================
-    function resize() {
+      // ============================================================================
+      // Resize Handler
+      // ============================================================================
+      function resize() {
       const dpr = window.devicePixelRatio || 1;
       width = window.innerWidth;
       height = window.innerHeight; // Exactly 100vh
@@ -423,10 +457,10 @@
       initLines();
     }
 
-    // ============================================================================
-    // Point Update Logic
-    // ============================================================================
-    function updatePoints() {
+      // ============================================================================
+      // Point Update Logic
+      // ============================================================================
+      function updatePoints() {
       updateGyroscopePhysics();
       
       if (useGyro && gyroEnabled && gyroCalibrated) {
@@ -611,79 +645,99 @@
           point.y += diffY * easeFactor * CONFIG.springDamping;
         }
       }
-    }
-
-    // ============================================================================
-    // Rendering
-    // ============================================================================
-    function drawLine(points) {
-      if (points.length < 2) return;
-      
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = CONFIG.lineWidth;
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      
-      const lastIndex = points.length - 1;
-      for (let i = 1; i < lastIndex; i++) {
-        const current = points[i];
-        const next = points[i + 1];
-        const midX = (current.x + next.x) * 0.5;
-        const midY = (current.y + next.y) * 0.5;
-        ctx.quadraticCurveTo(current.x, current.y, midX, midY);
       }
-      
-      const last = points[lastIndex];
-      ctx.lineTo(last.x, last.y);
-      ctx.stroke();
-    }
 
-    function render(timestamp) {
-      time = timestamp;
-      
-      // Clear canvas
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, width, height);
-      
-      // Update and draw
-      updatePoints();
-      
-      for (let i = 0; i < lines.length; i++) {
-        drawLine(lines[i].points);
+      // ============================================================================
+      // Rendering
+      // ============================================================================
+      function drawLine(points) {
+        if (points.length < 2) return;
+        
+        // Note: strokeStyle and lineWidth are set once before loop in render()
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        const lastIndex = points.length - 1;
+        for (let i = 1; i < lastIndex; i++) {
+          const current = points[i];
+          const next = points[i + 1];
+          const midX = (current.x + next.x) * 0.5;
+          const midY = (current.y + next.y) * 0.5;
+          ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+        }
+        
+        const last = points[lastIndex];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
       }
-      
-      // Update debug info
-      updateDevMode();
-      
-      requestAnimationFrame(render);
-    }
 
-    // ============================================================================
-    // Gyroscope Functions
-    // ============================================================================
-    function requestGyroPermission() {
-      console.log('requestGyroPermission called');
-      console.log('DeviceOrientationEvent available:', typeof DeviceOrientationEvent !== 'undefined');
-      console.log('requestPermission available:', typeof DeviceOrientationEvent !== 'undefined' && 
-                  typeof DeviceOrientationEvent.requestPermission === 'function');
+      function render(timestamp) {
+        // Frame rate limiting
+        const elapsed = timestamp - lastFrameTime;
+        if (elapsed < frameInterval) {
+          requestAnimationFrame(render);
+          return;
+        }
+        lastFrameTime = timestamp - (elapsed % frameInterval);
+
+        // Pause when page is hidden
+        if (isPaused) {
+          requestAnimationFrame(render);
+          return;
+        }
+
+        time = timestamp;
+        
+        // Clear canvas
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, width, height);
+        
+        // Batch canvas state changes - set once before loop
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = CONFIG.lineWidth;
+        
+        // Update and draw
+        updatePoints();
+        
+        for (let i = 0; i < lines.length; i++) {
+          drawLine(lines[i].points);
+        }
+        
+        // Throttle dev mode updates (every N frames)
+        if (devModeFrameCount % DEV_MODE_UPDATE_INTERVAL === 0) {
+          updateDevMode();
+        }
+        devModeFrameCount++;
+        
+        requestAnimationFrame(render);
+      }
+
+      // ============================================================================
+      // Gyroscope Functions
+      // ============================================================================
+      function requestGyroPermission() {
+        log('requestGyroPermission called');
+        log('DeviceOrientationEvent available:', typeof DeviceOrientationEvent !== 'undefined');
+        log('requestPermission available:', typeof DeviceOrientationEvent !== 'undefined' && 
+                    typeof DeviceOrientationEvent.requestPermission === 'function');
       
-      if (typeof DeviceOrientationEvent !== 'undefined' && 
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        console.log('Calling DeviceOrientationEvent.requestPermission()');
-        try {
-          const permissionPromise = DeviceOrientationEvent.requestPermission();
-          console.log('Permission promise created:', permissionPromise);
-          
-          permissionPromise
-            .then(response => {
-              console.log('Permission response:', response);
-              if (response === 'granted') {
-                enableGyroscope(true); // Auto-enable on permission grant
-                // Add event listener after permission is granted
-                // Remove first in case it was already added
-                window.removeEventListener('deviceorientation', handleDeviceOrientation);
-                window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
-                console.log('Device orientation permission granted');
+        if (typeof DeviceOrientationEvent !== 'undefined' && 
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          log('Calling DeviceOrientationEvent.requestPermission()');
+          try {
+            const permissionPromise = DeviceOrientationEvent.requestPermission();
+            log('Permission promise created:', permissionPromise);
+            
+            permissionPromise
+              .then(response => {
+                log('Permission response:', response);
+                if (response === 'granted') {
+                  enableGyroscope(true); // Auto-enable on permission grant
+                  // Add event listener after permission is granted
+                  // Remove first in case it was already added
+                  window.removeEventListener('deviceorientation', handleDeviceOrientation);
+                  window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
+                  log('Device orientation permission granted');
                 
                 // Update button if it exists (optional) - will be updated to "Validating..." after first calibration
                 const gyroBtn = document.getElementById('gyroBtn');
@@ -691,61 +745,61 @@
                   gyroBtn.textContent = 'Waiting for calibration...';
                   gyroBtn.disabled = false;
                 }
-              } else {
-                console.warn('Device orientation permission denied, response:', response);
+                } else {
+                  logWarn('Device orientation permission denied, response:', response);
+                  // Update button if it exists (optional)
+                  const gyroBtn = document.getElementById('gyroBtn');
+                  if (gyroBtn) {
+                    gyroBtn.textContent = 'Permission Denied - Tap to Retry';
+                    gyroBtn.disabled = false;
+                  }
+                }
+              })
+              .catch(error => {
+                logError('Error requesting device orientation permission:', error);
                 // Update button if it exists (optional)
                 const gyroBtn = document.getElementById('gyroBtn');
                 if (gyroBtn) {
-                  gyroBtn.textContent = 'Permission Denied - Tap to Retry';
+                  gyroBtn.textContent = 'Error - Tap to Retry';
                   gyroBtn.disabled = false;
                 }
-              }
-            })
-            .catch(error => {
-              console.error('Error requesting device orientation permission:', error);
-              // Update button if it exists (optional)
-              const gyroBtn = document.getElementById('gyroBtn');
-              if (gyroBtn) {
-                gyroBtn.textContent = 'Error - Tap to Retry';
-                gyroBtn.disabled = false;
-              }
-            });
-        } catch (error) {
-          console.error('Exception calling requestPermission:', error);
-          // Update button if it exists (optional)
-          const gyroBtn = document.getElementById('gyroBtn');
-          if (gyroBtn) {
-            gyroBtn.textContent = 'Exception - Check Console';
-            gyroBtn.disabled = false;
+              });
+          } catch (error) {
+            logError('Exception calling requestPermission:', error);
+            // Update button if it exists (optional)
+            const gyroBtn = document.getElementById('gyroBtn');
+            if (gyroBtn) {
+              gyroBtn.textContent = 'Exception - Check Console';
+              gyroBtn.disabled = false;
+            }
+            throw error; // Re-throw so caller knows it failed
           }
-          throw error; // Re-throw so caller knows it failed
+        } else {
+          log('requestPermission not available, enabling directly');
+          enableGyroscope(true);
         }
-      } else {
-        console.log('requestPermission not available, enabling directly');
-        enableGyroscope(true);
       }
-    }
 
-    function enableGyroscope(autoEnable = false) {
-      gyroEnabled = true;
-      gyroCalibrated = false;
-      gyroValidated = false;
-      gyroValidationSamples = [];
-      gyroValidationStartTime = Date.now();
-      isAutoEnabled = autoEnable;
-      console.log('Gyroscope enabled, autoEnable:', autoEnable);
-    }
-
-    function calibrateGyroscope(alpha, beta, gamma) {
-      gyroCalibration.alpha = alpha || 0;
-      gyroCalibration.beta = beta || 0;
-      gyroCalibration.gamma = gamma || 0;
-      gyroCalibrated = true;
-      console.log('Gyroscope calibrated:', { alpha, beta, gamma });
-      if (isAutoEnabled) {
-        useGyro = true;
-        console.log('Gyroscope auto-enabled');
+      function enableGyroscope(autoEnable = false) {
+        gyroEnabled = true;
+        gyroCalibrated = false;
+        gyroValidated = false;
+        gyroValidationSamples = [];
+        gyroValidationStartTime = Date.now();
+        isAutoEnabled = autoEnable;
+        log('Gyroscope enabled, autoEnable:', autoEnable);
       }
+
+      function calibrateGyroscope(alpha, beta, gamma) {
+        gyroCalibration.alpha = alpha || 0;
+        gyroCalibration.beta = beta || 0;
+        gyroCalibration.gamma = gamma || 0;
+        gyroCalibrated = true;
+        log('Gyroscope calibrated:', { alpha, beta, gamma });
+        if (isAutoEnabled) {
+          useGyro = true;
+          log('Gyroscope auto-enabled');
+        }
     }
 
     function validateGyroscopeInput(e) {
@@ -795,16 +849,16 @@
       const hasEnoughSamples = gyroValidationSamples.length >= 5;
       
       // Validate if we have variation, enough time has passed, or enough samples (even without variation)
-      if (hasVariation || hasEnoughTime || (hasEnoughSamples && validationDuration > 1000)) {
-        gyroValidated = true;
-        useGyro = true;
-        console.log('Gyroscope validated:', { 
-          hasVariation, 
-          hasEnoughTime, 
-          hasEnoughSamples, 
-          samples: gyroValidationSamples.length,
-          duration: validationDuration 
-        });
+        if (hasVariation || hasEnoughTime || (hasEnoughSamples && validationDuration > 1000)) {
+          gyroValidated = true;
+          useGyro = true;
+          log('Gyroscope validated:', { 
+            hasVariation, 
+            hasEnoughTime, 
+            hasEnoughSamples, 
+            samples: gyroValidationSamples.length,
+            duration: validationDuration 
+          });
         
         const gyroControl = document.querySelector('.gyro-control');
         if (gyroControl) {
@@ -825,9 +879,9 @@
       return false;
     }
 
-    function updateDevMode() {
-      const devMode = document.getElementById('devMode');
-      if (!devMode) return;
+      function updateDevMode() {
+        const devMode = document.getElementById('devMode');
+        if (!devMode) return;
       
       const alphaEl = document.getElementById('devAlpha');
       const betaEl = document.getElementById('devBeta');
@@ -869,7 +923,7 @@
       if (activeEl) activeEl.textContent = useGyro ? 'true' : 'false';
     }
 
-    function handleDeviceOrientation(e) {
+      function handleDeviceOrientation(e) {
       // On iOS, if we receive an event, permission is granted
       if (!gyroEnabled) {
         const alpha = e.alpha;
@@ -974,8 +1028,8 @@
       gyroAcceleration.y = tiltDirectionY * tiltMagnitude * GYRO_LIQUID_CONFIG.tiltSensitivity;
     }
     
-    function updateGyroscopePhysics() {
-      if (!useGyro || !gyroCalibrated) return;
+      function updateGyroscopePhysics() {
+        if (!useGyro || !gyroCalibrated) return;
       
       const dx = gyroTarget.x - gyroPosition.x;
       const dy = gyroTarget.y - gyroPosition.y;
@@ -1014,10 +1068,10 @@
       // gyroPosition will smoothly follow gyroTarget through the physics simulation
     }
 
-    // ============================================================================
-    // Event Handlers
-    // ============================================================================
-    function handleMouseMove(e) {
+      // ============================================================================
+      // Event Handlers
+      // ============================================================================
+      function handleMouseMove(e) {
       if (!useGyro) {
         targetMouse.x = e.clientX;
         targetMouse.y = e.clientY;
@@ -1045,129 +1099,158 @@
       }
     }
 
-    // ============================================================================
-    // Initialization
-    // ============================================================================
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseleave', handleMouseLeave);
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd);
-    
-    // Detect iOS and permission requirements
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const needsPermission = isIOS && typeof DeviceOrientationEvent !== 'undefined' && 
-                            typeof DeviceOrientationEvent.requestPermission === 'function';
-    
-    console.log('Device detection:', {
-      isIOS,
-      isSafari,
-      userAgent: navigator.userAgent,
-      needsPermission,
-      DeviceOrientationEvent: typeof DeviceOrientationEvent !== 'undefined',
-      requestPermission: typeof DeviceOrientationEvent !== 'undefined' && 
-                        typeof DeviceOrientationEvent.requestPermission === 'function'
-    });
+      // ============================================================================
+      // Initialization
+      // ============================================================================
+      
+      // Page visibility handler - pause when hidden
+      document.addEventListener('visibilitychange', function() {
+        isPaused = document.hidden;
+        if (!isPaused && !lastFrameTime) {
+          // Resume animation
+          requestAnimationFrame(render);
+        }
+      });
+
+      // Webflow integration - cleanup on page navigation
+      window.addEventListener('beforeunload', function() {
+        // Cleanup intervals
+        if (statusCheckInterval) {
+          clearInterval(statusCheckInterval);
+        }
+        if (cleanupInterval) {
+          clearInterval(cleanupInterval);
+        }
+      });
+
+      // Event listener management - use AbortController for cleanup
+      const abortController = new AbortController();
+      const signal = abortController.signal;
+
+      window.addEventListener('resize', resize, { signal });
+      window.addEventListener('mousemove', handleMouseMove, { signal });
+      window.addEventListener('mouseleave', handleMouseLeave, { signal });
+      window.addEventListener('touchmove', handleTouchMove, { passive: true, signal });
+      window.addEventListener('touchend', handleTouchEnd, { signal });
+      
+      // Detect iOS and permission requirements
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const needsPermission = isIOS && typeof DeviceOrientationEvent !== 'undefined' && 
+                              typeof DeviceOrientationEvent.requestPermission === 'function';
+      
+      log('Device detection:', {
+        isIOS,
+        isSafari,
+        userAgent: navigator.userAgent,
+        needsPermission,
+        DeviceOrientationEvent: typeof DeviceOrientationEvent !== 'undefined',
+        requestPermission: typeof DeviceOrientationEvent !== 'undefined' && 
+                          typeof DeviceOrientationEvent.requestPermission === 'function',
+        isLowEndDevice,
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemory: navigator.deviceMemory
+      });
     
     if (!needsPermission) {
       // Non-iOS or older iOS - add listener immediately
       window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
     }
     
-    // Check if device has gyroscope available
-    function checkGyroscopeAvailability() {
-      // Check if DeviceOrientationEvent is supported
-      if (typeof DeviceOrientationEvent === 'undefined') {
-        console.log('DeviceOrientationEvent not supported');
-        return false;
+      // Check if device has gyroscope available
+      function checkGyroscopeAvailability() {
+        // Check if DeviceOrientationEvent is supported
+        if (typeof DeviceOrientationEvent === 'undefined') {
+          log('DeviceOrientationEvent not supported');
+          return false;
+        }
+        
+        // On iOS, we need to check if permission can be requested
+        if (needsPermission) {
+          // iOS devices typically have gyroscopes, so if we can request permission, assume it's available
+          log('iOS device detected with permission API - assuming gyroscope available');
+          return true;
+        }
+        
+        // Check if we're on a touch device (which typically have gyroscopes)
+        // This matches the CSS media query: (hover: none) and (pointer: coarse)
+        const isTouchDevice = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+        
+        // Also check user agent for mobile devices
+        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Desktop browsers (like Cursor/Chrome on desktop) don't have physical gyroscopes
+        // Even if they support DeviceOrientationEvent API, they won't have real gyroscope data
+        const hasGyroscope = isTouchDevice || isMobileUA;
+        
+        log('Gyroscope check details:', {
+          isTouchDevice,
+          isMobileUA,
+          hasGyroscope,
+          userAgent: navigator.userAgent
+        });
+        
+        return hasGyroscope;
       }
       
-      // On iOS, we need to check if permission can be requested
-      if (needsPermission) {
-        // iOS devices typically have gyroscopes, so if we can request permission, assume it's available
-        console.log('iOS device detected with permission API - assuming gyroscope available');
-        return true;
-      }
-      
-      // Check if we're on a touch device (which typically have gyroscopes)
-      // This matches the CSS media query: (hover: none) and (pointer: coarse)
-      const isTouchDevice = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-      
-      // Also check user agent for mobile devices
-      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      // Desktop browsers (like Cursor/Chrome on desktop) don't have physical gyroscopes
-      // Even if they support DeviceOrientationEvent API, they won't have real gyroscope data
-      const hasGyroscope = isTouchDevice || isMobileUA;
-      
-      console.log('Gyroscope check details:', {
-        isTouchDevice,
-        isMobileUA,
-        hasGyroscope,
-        userAgent: navigator.userAgent
-      });
-      
-      return hasGyroscope;
-    }
-    
-    const hasGyroscope = checkGyroscopeAvailability();
-    console.log('Gyroscope availability check:', hasGyroscope);
+      const hasGyroscope = checkGyroscopeAvailability();
+      log('Gyroscope availability check:', hasGyroscope);
     
     // Gyroscope button setup
     const gyroBtn = document.getElementById('gyroBtn');
     const gyroControl = document.querySelector('.gyro-control');
     
-    // Hide gyroscope controls if device doesn't have gyroscope
-    if (!hasGyroscope && gyroControl) {
-      // Use setProperty with important to override CSS !important rules
-      gyroControl.style.setProperty('display', 'none', 'important');
-      console.log('Gyroscope not available, hiding controls');
-    } else if (isIOS && hasGyroscope && gyroControl) {
-      // Force button to be visible on iOS (if gyroscope is available)
-      gyroControl.style.setProperty('display', 'block', 'important');
-      console.log('Forced gyro button to be visible on iOS');
-    }
-    
-    let statusCheckInterval = null;
-    
-    if (gyroBtn) {
-      console.log('Gyro button found, setting up');
+      // Hide gyroscope controls if device doesn't have gyroscope
+      if (!hasGyroscope && gyroControl) {
+        // Use setProperty with important to override CSS !important rules
+        gyroControl.style.setProperty('display', 'none', 'important');
+        log('Gyroscope not available, hiding controls');
+      } else if (isIOS && hasGyroscope && gyroControl) {
+        // Force button to be visible on iOS (if gyroscope is available)
+        gyroControl.style.setProperty('display', 'block', 'important');
+        log('Forced gyro button to be visible on iOS');
+      }
+      
+      let statusCheckInterval = null;
+      let cleanupInterval = null;
+      
+      if (gyroBtn) {
+        log('Gyro button found, setting up');
       // Update button text for iOS
       if (needsPermission) {
         gyroBtn.textContent = 'Enable Gyroscope';
       }
       
       // Use both click and touchstart for better iOS compatibility
-      const handleGyroClick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Gyro button clicked, gyroEnabled:', gyroEnabled);
-        
-        if (!gyroEnabled) {
-          if (needsPermission) {
-            console.log('Requesting permission...');
-            requestGyroPermission();
-            gyroBtn.textContent = 'Requesting Permission...';
-            gyroBtn.disabled = true;
-          } else {
-            enableGyroscope(true);
-            gyroBtn.textContent = 'Enable Gyroscope';
-          }
-        } else {
-          useGyro = !useGyro;
-          gyroBtn.classList.toggle('active', useGyro);
-          gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
+        const handleGyroClick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          log('Gyro button clicked, gyroEnabled:', gyroEnabled);
           
-          if (!useGyro) {
-            targetMouse.x = -1000;
-            targetMouse.y = -1000;
+          if (!gyroEnabled) {
+            if (needsPermission) {
+              log('Requesting permission...');
+              requestGyroPermission();
+              gyroBtn.textContent = 'Requesting Permission...';
+              gyroBtn.disabled = true;
+            } else {
+              enableGyroscope(true);
+              gyroBtn.textContent = 'Enable Gyroscope';
+            }
+          } else {
+            useGyro = !useGyro;
+            gyroBtn.classList.toggle('active', useGyro);
+            gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
+            
+            if (!useGyro) {
+              targetMouse.x = -1000;
+              targetMouse.y = -1000;
+            }
           }
-        }
-      };
-      
-      gyroBtn.addEventListener('click', handleGyroClick);
-      gyroBtn.addEventListener('touchend', handleGyroClick);
+        };
+        
+        gyroBtn.addEventListener('click', handleGyroClick, { signal });
+        gyroBtn.addEventListener('touchend', handleGyroClick, { signal });
       
       const checkGyroStatus = () => {
         if (gyroEnabled && gyroCalibrated && gyroValidated) {
@@ -1195,27 +1278,27 @@
         }
       }, 100);
       
-      // Safety timeout: force validation after 5 seconds even if requirements aren't met
-      setTimeout(() => {
-        if (gyroEnabled && gyroCalibrated && !gyroValidated) {
-          console.log('Validation timeout - forcing validation after 5 seconds');
-          gyroValidated = true;
-          useGyro = true;
-          const gyroBtn = document.getElementById('gyroBtn');
-          if (gyroBtn) {
-            gyroBtn.textContent = 'Disable Gyroscope';
-            gyroBtn.classList.add('active');
-            gyroBtn.disabled = false;
+        // Safety timeout: force validation after 5 seconds even if requirements aren't met
+        setTimeout(() => {
+          if (gyroEnabled && gyroCalibrated && !gyroValidated) {
+            log('Validation timeout - forcing validation after 5 seconds');
+            gyroValidated = true;
+            useGyro = true;
+            const gyroBtn = document.getElementById('gyroBtn');
+            if (gyroBtn) {
+              gyroBtn.textContent = 'Disable Gyroscope';
+              gyroBtn.classList.add('active');
+              gyroBtn.disabled = false;
+            }
+            const gyroControl = document.querySelector('.gyro-control');
+            if (gyroControl) {
+              gyroControl.style.display = 'none';
+            }
           }
-          const gyroControl = document.querySelector('.gyro-control');
-          if (gyroControl) {
-            gyroControl.style.display = 'none';
-          }
-        }
-      }, 5000);
-    }
-    
-    function autoEnableGyroscope() {
+        }, 5000);
+      }
+      
+      function autoEnableGyroscope() {
       if (typeof DeviceOrientationEvent !== 'undefined') {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                          (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
@@ -1229,7 +1312,7 @@
           // On iOS, first check if permission is already granted
           const testHandler = (e) => {
             if (e.alpha !== null || e.beta !== null || e.gamma !== null) {
-              console.log('iOS: Permission already granted, events are working');
+              log('iOS: Permission already granted, events are working');
               window.removeEventListener('deviceorientation', testHandler);
               enableGyroscope(true);
               window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
@@ -1248,7 +1331,7 @@
             setTimeout(() => {
               window.removeEventListener('deviceorientation', testHandler);
               // If no events, automatically request permission
-              console.log('iOS: No deviceorientation events received, requesting permission automatically');
+              log('iOS: No deviceorientation events received, requesting permission automatically');
               requestGyroPermission();
               const gyroBtn = document.getElementById('gyroBtn');
               if (gyroBtn) {
@@ -1259,9 +1342,8 @@
           }, 500);
         }
       }
-    }
-    
-    autoEnableGyroscope();
+      
+      autoEnableGyroscope();
     
     // Automatically request gyroscope permission on first user interaction anywhere on the page
     // iOS requires a user gesture to request permission, so we trigger on any interaction
@@ -1269,67 +1351,67 @@
         typeof DeviceOrientationEvent.requestPermission === 'function') {
       let permissionRequested = false;
       
-      const requestOnInteraction = (e) => {
-        console.log('Interaction event detected:', e.type, 'target:', e.target);
-        
-        // Only request if:
-        // 1. Not already enabled (permission not granted yet)
-        // 2. Not already requested in this session
-        // 3. Permission wasn't already detected as granted
-        if (!gyroEnabled && !permissionRequested) {
-          permissionRequested = true;
-          console.log('User interaction detected - automatically requesting gyroscope permission');
-          console.log('Event details:', { type: e.type, target: e.target, currentTarget: e.currentTarget });
+        const requestOnInteraction = (e) => {
+          log('Interaction event detected:', e.type, 'target:', e.target);
           
-          // Update button state if button exists (optional)
-          const gyroBtn = document.getElementById('gyroBtn');
-          if (gyroBtn) {
-            gyroBtn.textContent = 'Requesting Permission...';
-            gyroBtn.disabled = true;
-          }
-          
-          // Request permission (works independently of button)
-          try {
-            requestGyroPermission();
-          } catch (error) {
-            console.error('Error in automatic permission request:', error);
-            // Allow retry on error
-            permissionRequested = false;
-            // Update button if it exists (optional)
+          // Only request if:
+          // 1. Not already enabled (permission not granted yet)
+          // 2. Not already requested in this session
+          // 3. Permission wasn't already detected as granted
+          if (!gyroEnabled && !permissionRequested) {
+            permissionRequested = true;
+            log('User interaction detected - automatically requesting gyroscope permission');
+            log('Event details:', { type: e.type, target: e.target, currentTarget: e.currentTarget });
+            
+            // Update button state if button exists (optional)
+            const gyroBtn = document.getElementById('gyroBtn');
             if (gyroBtn) {
-              gyroBtn.textContent = 'Enable Gyroscope';
-              gyroBtn.disabled = false;
+              gyroBtn.textContent = 'Requesting Permission...';
+              gyroBtn.disabled = true;
             }
+            
+            // Request permission (works independently of button)
+            try {
+              requestGyroPermission();
+            } catch (error) {
+              logError('Error in automatic permission request:', error);
+              // Allow retry on error
+              permissionRequested = false;
+              // Update button if it exists (optional)
+              if (gyroBtn) {
+                gyroBtn.textContent = 'Enable Gyroscope';
+                gyroBtn.disabled = false;
+              }
+            }
+            
+            // Clean up all listeners after first interaction attempt
+            const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+            events.forEach(eventType => {
+              window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              const container = document.querySelector('.container');
+              if (container) {
+                container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              }
+            });
+          } else if (gyroEnabled) {
+            // Permission already granted, clean up listeners
+            log('Gyroscope already enabled, skipping permission request');
+            const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+            events.forEach(eventType => {
+              window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              const container = document.querySelector('.container');
+              if (container) {
+                container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              }
+            });
+          } else if (permissionRequested) {
+            log('Permission already requested in this session, skipping');
           }
-          
-          // Clean up all listeners after first interaction attempt
-          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
-          events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            const container = document.querySelector('.container');
-            if (container) {
-              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            }
-          });
-        } else if (gyroEnabled) {
-          // Permission already granted, clean up listeners
-          console.log('Gyroscope already enabled, skipping permission request');
-          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
-          events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            const container = document.querySelector('.container');
-            if (container) {
-              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            }
-          });
-        } else if (permissionRequested) {
-          console.log('Permission already requested in this session, skipping');
-        }
-      };
+        };
       
       // Listen for any touch interaction anywhere on the page
       // Using touch-specific event types for mobile devices
@@ -1340,83 +1422,89 @@
         'pointerdown'   // Pointer events (covers touch, pen, etc. on modern browsers)
       ];
       
-      // Set up automatic permission request on user interaction
-      // This works completely independently of the button - no button required
-      if (!gyroEnabled) {
-        console.log('Setting up automatic gyroscope permission request on user interaction');
-        console.log('needsPermission:', needsPermission);
-        console.log('gyroEnabled:', gyroEnabled);
-        
-        interactionEvents.forEach(eventType => {
-          // Add to both window and document to catch all interactions
-          // Use capture phase to catch events before they reach other handlers
-          window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-          document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-          // Also add to body and the container to catch all possible interactions
-          document.body.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-          const container = document.querySelector('.container');
-          if (container) {
-            container.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-          }
-        });
-        
-        console.log('Automatic permission request listeners attached to:', {
-          window: true,
-          document: true,
-          body: true,
-          container: !!document.querySelector('.container')
-        });
-      } else {
-        console.log('Gyroscope already enabled, skipping automatic permission request setup');
-      }
-      
-      // Also set up a check to clean up listeners if permission gets granted elsewhere
-      const checkAndCleanup = () => {
-        if (gyroEnabled) {
-          const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
-          events.forEach(eventType => {
-            window.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+        // Set up automatic permission request on user interaction
+        // This works completely independently of the button - no button required
+        if (!gyroEnabled) {
+          log('Setting up automatic gyroscope permission request on user interaction');
+          log('needsPermission:', needsPermission);
+          log('gyroEnabled:', gyroEnabled);
+          
+          interactionEvents.forEach(eventType => {
+            // Add to both window and document to catch all interactions
+            // Use capture phase to catch events before they reach other handlers
+            window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+            document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
+            // Also add to body and the container to catch all possible interactions
+            document.body.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
             const container = document.querySelector('.container');
             if (container) {
-              container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              container.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
             }
           });
+          
+          log('Automatic permission request listeners attached to:', {
+            window: true,
+            document: true,
+            body: true,
+            container: !!document.querySelector('.container')
+          });
+        } else {
+          log('Gyroscope already enabled, skipping automatic permission request setup');
         }
-      };
-      
-      // Check periodically and clean up if permission is granted
-      const cleanupInterval = setInterval(() => {
-        if (gyroEnabled) {
-          checkAndCleanup();
-          clearInterval(cleanupInterval);
-        }
-      }, 500);
-      
-      // Also clean up after a reasonable timeout (10 seconds)
-      setTimeout(() => {
-        clearInterval(cleanupInterval);
-      }, 10000);
-    }
-    
-    resize();
-    requestAnimationFrame(render);
-    
-    // Log button visibility for debugging
-    setTimeout(() => {
-      const gyroBtn = document.getElementById('gyroBtn');
-      const gyroControl = document.querySelector('.gyro-control');
-      if (gyroBtn) {
-        const rect = gyroBtn.getBoundingClientRect();
-        console.log('Button visibility check:', {
-          display: window.getComputedStyle(gyroControl).display,
-          visible: rect.width > 0 && rect.height > 0,
-          position: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-          zIndex: window.getComputedStyle(gyroControl).zIndex
-        });
+        
+        // Also set up a check to clean up listeners if permission gets granted elsewhere
+        const checkAndCleanup = () => {
+          if (gyroEnabled) {
+            const events = ['touchstart', 'touchend', 'touchmove', 'pointerdown'];
+            events.forEach(eventType => {
+              window.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              document.body.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              const container = document.querySelector('.container');
+              if (container) {
+                container.removeEventListener(eventType, requestOnInteraction, { capture: true });
+              }
+            });
+          }
+        };
+        
+        // Check periodically and clean up if permission is granted
+        cleanupInterval = setInterval(() => {
+          if (gyroEnabled) {
+            checkAndCleanup();
+            clearInterval(cleanupInterval);
+          }
+        }, 500);
+        
+        // Also clean up after a reasonable timeout (10 seconds)
+        setTimeout(() => {
+          if (cleanupInterval) {
+            clearInterval(cleanupInterval);
+          }
+        }, 10000);
       }
-    }, 1000);
+      
+      // Initialize
+      resize();
+      requestAnimationFrame(render);
+      
+      // Log button visibility for debugging
+      if (DEBUG) {
+        setTimeout(() => {
+          const gyroBtn = document.getElementById('gyroBtn');
+          const gyroControl = document.querySelector('.gyro-control');
+          if (gyroBtn) {
+            const rect = gyroBtn.getBoundingClientRect();
+            log('Button visibility check:', {
+              display: window.getComputedStyle(gyroControl).display,
+              visible: rect.width > 0 && rect.height > 0,
+              position: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+              zIndex: window.getComputedStyle(gyroControl).zIndex
+            });
+          }
+        }, 1000);
+      }
+    })();
   </script>
 </body>
 </html>
