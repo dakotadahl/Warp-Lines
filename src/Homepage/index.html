@@ -288,18 +288,142 @@
     };
 
       // ============================================================================
-      // Canvas Setup
+      // WebGL Setup
       // ============================================================================
       const canvas = document.getElementById('canvas');
       if (!canvas) {
         logError('Canvas element not found');
         return;
       }
-      const ctx = canvas.getContext('2d', { alpha: false });
       
-      // Cache color string to avoid string concatenation in render loop
+      // Try WebGL first, fallback to 2D canvas
+      let gl = null;
+      let useWebGL = false;
+      let ctx = null;
+      
+      try {
+        gl = canvas.getContext('webgl', { 
+          alpha: false, 
+          antialias: true,
+          depth: false,
+          stencil: false,
+          preserveDrawingBuffer: false
+        }) || canvas.getContext('experimental-webgl', { alpha: false });
+        
+        if (gl) {
+          useWebGL = true;
+          log('WebGL context created successfully');
+        }
+      } catch (e) {
+        logError('WebGL not available, falling back to Canvas 2D:', e);
+      }
+      
+      // Fallback to Canvas 2D if WebGL failed
+      if (!useWebGL) {
+        ctx = canvas.getContext('2d', { alpha: false });
+        log('Using Canvas 2D fallback');
+      }
+      
+      // Cache color values
       const strokeColor = `rgba(${CONFIG.color.r},${CONFIG.color.g},${CONFIG.color.b},0.85)`;
       const bgColor = '#0a0506';
+      const strokeColorRGB = [CONFIG.color.r / 255, CONFIG.color.g / 255, CONFIG.color.b / 255, 0.85];
+      const bgColorRGB = [10 / 255, 5 / 255, 6 / 255, 1.0];
+      
+      // WebGL shaders and buffers
+      let shaderProgram = null;
+      let positionBuffer = null;
+      let vertexCount = 0;
+      
+      if (useWebGL) {
+        // Vertex shader source
+        const vertexShaderSource = `
+          attribute vec2 a_position;
+          uniform vec2 u_resolution;
+          
+          void main() {
+            // Convert from pixels to clip space
+            vec2 clipSpace = ((a_position / u_resolution) * 2.0) - 1.0;
+            gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+          }
+        `;
+        
+        // Fragment shader source
+        const fragmentShaderSource = `
+          precision mediump float;
+          uniform vec4 u_color;
+          
+          void main() {
+            gl_FragColor = u_color;
+          }
+        `;
+        
+        // Compile shader
+        function createShader(gl, type, source) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            logError('Shader compilation error:', gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+          }
+          
+          return shader;
+        }
+        
+        // Create shader program
+        function createProgram(gl, vertexSource, fragmentSource) {
+          const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
+          const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+          
+          if (!vertexShader || !fragmentShader) {
+            return null;
+          }
+          
+          const program = gl.createProgram();
+          gl.attachShader(program, vertexShader);
+          gl.attachShader(program, fragmentShader);
+          gl.linkProgram(program);
+          
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            logError('Program linking error:', gl.getProgramInfoLog(program));
+            gl.deleteProgram(program);
+            return null;
+          }
+          
+          return program;
+        }
+        
+        shaderProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
+        
+        if (shaderProgram) {
+          // Get attribute and uniform locations
+          const positionLocation = gl.getAttribLocation(shaderProgram, 'a_position');
+          const resolutionLocation = gl.getUniformLocation(shaderProgram, 'u_resolution');
+          const colorLocation = gl.getUniformLocation(shaderProgram, 'u_color');
+          
+          // Create position buffer
+          positionBuffer = gl.createBuffer();
+          
+          // WebGL state setup
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl.lineWidth(1.0); // Note: lineWidth may be limited to 1.0 on some systems
+          
+          // Store locations for later use
+          gl.positionLocation = positionLocation;
+          gl.resolutionLocation = resolutionLocation;
+          gl.colorLocation = colorLocation;
+          
+          log('WebGL setup complete');
+        } else {
+          logError('Failed to create WebGL program, falling back to Canvas 2D');
+          useWebGL = false;
+          ctx = canvas.getContext('2d', { alpha: false });
+        }
+      }
 
     // ============================================================================
     // Noise Generator (Simplex Noise)
@@ -425,18 +549,23 @@
       // Resize Handler
       // ============================================================================
       function resize() {
-      const dpr = window.devicePixelRatio || 1;
-      width = window.innerWidth;
-      height = window.innerHeight; // Exactly 100vh
-      
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      
-      ctx.scale(dpr, dpr);
-      vanishingPoint.x = width / 2;
-      vanishingPoint.y = height * CONFIG.vanishingPointY;
+        const dpr = window.devicePixelRatio || 1;
+        width = window.innerWidth;
+        height = window.innerHeight; // Exactly 100vh
+        
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        if (useWebGL && gl) {
+          gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        } else if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+        
+        vanishingPoint.x = width / 2;
+        vanishingPoint.y = height * CONFIG.vanishingPointY;
       
       if (gyroTarget.x === -1000) {
         const centerX = width / 2;
@@ -650,25 +779,131 @@
       // ============================================================================
       // Rendering
       // ============================================================================
+      // Helper function to tessellate quadratic curve into line segments
+      function tessellateQuadratic(p0x, p0y, p1x, p1y, p2x, p2y, segments = 8) {
+        const result = [];
+        // Skip first point (p0) as it's already added
+        for (let i = 1; i <= segments; i++) {
+          const t = i / segments;
+          const mt = 1 - t;
+          const x = mt * mt * p0x + 2 * mt * t * p1x + t * t * p2x;
+          const y = mt * mt * p0y + 2 * mt * t * p1y + t * t * p2y;
+          result.push(x, y);
+        }
+        return result;
+      }
+      
       function drawLine(points) {
         if (points.length < 2) return;
         
-        // Note: strokeStyle and lineWidth are set once before loop in render()
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
+        if (useWebGL && gl) {
+          // WebGL rendering - tessellate curves for smooth appearance
+          const segments = [];
+          const lastIndex = points.length - 1;
+          
+          // Add first point
+          segments.push(points[0].x, points[0].y);
+          
+          // Create smooth curve segments matching Canvas 2D quadraticCurveTo behavior
+          for (let i = 1; i < lastIndex; i++) {
+            const prev = i === 1 ? points[0] : points[i - 1];
+            const current = points[i];
+            const next = points[i + 1];
+            
+            // Calculate midpoint for quadratic curve (matches Canvas 2D logic)
+            const midX = (current.x + next.x) * 0.5;
+            const midY = (current.y + next.y) * 0.5;
+            
+            // Tessellate the quadratic curve (prev -> current -> mid)
+            // This matches: ctx.quadraticCurveTo(current.x, current.y, midX, midY)
+            const curveSegments = tessellateQuadratic(
+              prev.x, prev.y,      // Start point
+              current.x, current.y, // Control point
+              midX, midY,          // End point
+              6 // Number of segments per curve (adjust for quality/performance)
+            );
+            
+            // Add tessellated segments
+            segments.push(...curveSegments);
+          }
+          
+          // Add last point
+          segments.push(points[lastIndex].x, points[lastIndex].y);
+          
+          return segments;
+        } else {
+          // Canvas 2D fallback
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, points[0].y);
+          
+          const lastIndex = points.length - 1;
+          for (let i = 1; i < lastIndex; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+            const midX = (current.x + next.x) * 0.5;
+            const midY = (current.y + next.y) * 0.5;
+            ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+          }
+          
+          const last = points[lastIndex];
+          ctx.lineTo(last.x, last.y);
+          ctx.stroke();
+          return null;
+        }
+      }
+      
+      function renderWebGL() {
+        if (!gl || !shaderProgram) return;
         
-        const lastIndex = points.length - 1;
-        for (let i = 1; i < lastIndex; i++) {
-          const current = points[i];
-          const next = points[i + 1];
-          const midX = (current.x + next.x) * 0.5;
-          const midY = (current.y + next.y) * 0.5;
-          ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+        // Clear canvas
+        gl.clearColor(bgColorRGB[0], bgColorRGB[1], bgColorRGB[2], bgColorRGB[3]);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        // Use shader program
+        gl.useProgram(shaderProgram);
+        
+        // Set resolution uniform
+        gl.uniform2f(gl.resolutionLocation, width, height);
+        
+        // Set color uniform
+        gl.uniform4f(gl.colorLocation, strokeColorRGB[0], strokeColorRGB[1], strokeColorRGB[2], strokeColorRGB[3]);
+        
+        // Bind position buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(gl.positionLocation);
+        gl.vertexAttribPointer(gl.positionLocation, 2, gl.FLOAT, false, 0, 0);
+        
+        // Collect all line vertices
+        const allVertices = [];
+        const lineStarts = [];
+        let vertexOffset = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const lineSegments = drawLine(lines[i].points);
+          if (lineSegments && lineSegments.length >= 4) { // Need at least 2 points (4 values)
+            const pointCount = lineSegments.length / 2;
+            lineStarts.push({
+              offset: vertexOffset,
+              count: pointCount
+            });
+            allVertices.push(...lineSegments);
+            vertexOffset += pointCount;
+          }
         }
         
-        const last = points[lastIndex];
-        ctx.lineTo(last.x, last.y);
-        ctx.stroke();
+        if (allVertices.length > 0) {
+          // Upload vertex data
+          const vertices = new Float32Array(allVertices);
+          gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+          
+          // Draw each line as a line strip
+          for (let i = 0; i < lineStarts.length; i++) {
+            const line = lineStarts[i];
+            if (line.count > 1) {
+              gl.drawArrays(gl.LINE_STRIP, line.offset, line.count);
+            }
+          }
+        }
       }
 
       function render(timestamp) {
@@ -688,19 +923,24 @@
 
         time = timestamp;
         
-        // Clear canvas
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, width, height);
-        
-        // Batch canvas state changes - set once before loop
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = CONFIG.lineWidth;
-        
-        // Update and draw
+        // Update physics
         updatePoints();
         
-        for (let i = 0; i < lines.length; i++) {
-          drawLine(lines[i].points);
+        // Render based on context type
+        if (useWebGL && gl) {
+          renderWebGL();
+        } else if (ctx) {
+          // Canvas 2D fallback
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, width, height);
+          
+          // Batch canvas state changes - set once before loop
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = CONFIG.lineWidth;
+          
+          for (let i = 0; i < lines.length; i++) {
+            drawLine(lines[i].points);
+          }
         }
         
         // Throttle dev mode updates (every N frames)
