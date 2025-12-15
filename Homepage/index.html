@@ -1075,13 +1075,57 @@
       window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
     }
     
+    // Check if device has gyroscope available
+    function checkGyroscopeAvailability() {
+      // Check if DeviceOrientationEvent is supported
+      if (typeof DeviceOrientationEvent === 'undefined') {
+        console.log('DeviceOrientationEvent not supported');
+        return false;
+      }
+      
+      // On iOS, we need to check if permission can be requested
+      if (needsPermission) {
+        // iOS devices typically have gyroscopes, so if we can request permission, assume it's available
+        console.log('iOS device detected with permission API - assuming gyroscope available');
+        return true;
+      }
+      
+      // Check if we're on a touch device (which typically have gyroscopes)
+      // This matches the CSS media query: (hover: none) and (pointer: coarse)
+      const isTouchDevice = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      
+      // Also check user agent for mobile devices
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Desktop browsers (like Cursor/Chrome on desktop) don't have physical gyroscopes
+      // Even if they support DeviceOrientationEvent API, they won't have real gyroscope data
+      const hasGyroscope = isTouchDevice || isMobileUA;
+      
+      console.log('Gyroscope check details:', {
+        isTouchDevice,
+        isMobileUA,
+        hasGyroscope,
+        userAgent: navigator.userAgent
+      });
+      
+      return hasGyroscope;
+    }
+    
+    const hasGyroscope = checkGyroscopeAvailability();
+    console.log('Gyroscope availability check:', hasGyroscope);
+    
     // Gyroscope button setup
     const gyroBtn = document.getElementById('gyroBtn');
     const gyroControl = document.querySelector('.gyro-control');
     
-    // Force button to be visible on iOS
-    if (isIOS && gyroControl) {
-      gyroControl.style.display = 'block';
+    // Hide gyroscope controls if device doesn't have gyroscope
+    if (!hasGyroscope && gyroControl) {
+      // Use setProperty with important to override CSS !important rules
+      gyroControl.style.setProperty('display', 'none', 'important');
+      console.log('Gyroscope not available, hiding controls');
+    } else if (isIOS && hasGyroscope && gyroControl) {
+      // Force button to be visible on iOS (if gyroscope is available)
+      gyroControl.style.setProperty('display', 'block', 'important');
       console.log('Forced gyro button to be visible on iOS');
     }
     
