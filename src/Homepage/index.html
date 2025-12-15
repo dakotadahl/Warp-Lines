@@ -774,7 +774,6 @@
           point.y += diffY * easeFactor * CONFIG.springDamping;
         }
       }
-      }
 
       // ============================================================================
       // Rendering
@@ -1040,9 +1039,9 @@
           useGyro = true;
           log('Gyroscope auto-enabled');
         }
-    }
+      }
 
-    function validateGyroscopeInput(e) {
+      function validateGyroscopeInput(e) {
       if (gyroValidated) return true;
       
       const alpha = e.alpha;
@@ -1105,19 +1104,27 @@
         // Update button
         const gyroBtn = document.getElementById('gyroBtn');
         if (gyroBtn) {
-          // On mobile devices, hide the button once gyroscope is enabled and validated
-          // This prevents users from accidentally disabling it
-          if (hasGyroscope && gyroControl) {
-            gyroControl.style.setProperty('display', 'none', 'important');
-            log('Gyroscope validated on mobile - hiding button to prevent disable');
-          } else {
-            // Desktop: show button with toggle option
-            gyroBtn.textContent = 'Disable Gyroscope';
-            gyroBtn.classList.add('active');
-            gyroBtn.disabled = false;
+          // On mobile devices, hide the button immediately once gyroscope is enabled and validated
+          // This prevents users from accidentally disabling it and ensures "Disable Gyroscope" never appears
+          if (hasGyroscope) {
+            // Hide button immediately with multiple CSS properties to ensure it's completely hidden
             if (gyroControl) {
-              gyroControl.style.display = 'none';
+              gyroControl.style.setProperty('display', 'none', 'important');
+              gyroControl.style.setProperty('visibility', 'hidden', 'important');
+              gyroControl.style.setProperty('opacity', '0', 'important');
+              gyroControl.style.setProperty('pointer-events', 'none', 'important');
             }
+            // Never set "Disable Gyroscope" text on mobile - button should be hidden
+            log('Gyroscope validated on mobile - hiding button to prevent disable');
+            return true; // Early return to prevent any further button updates
+          }
+          
+          // Desktop: show button with toggle option
+          setGyroButtonText('Disable Gyroscope');
+          gyroBtn.classList.add('active');
+          gyroBtn.disabled = false;
+          if (gyroControl) {
+            gyroControl.style.display = 'none';
           }
         }
         
@@ -1222,7 +1229,11 @@
         // Update button text after calibration
         const gyroBtn = document.getElementById('gyroBtn');
         if (gyroBtn) {
-          gyroBtn.textContent = 'Validating...';
+          // On mobile, don't show "Validating..." if button should be hidden soon
+          // Just keep it as-is or hide it immediately
+          if (!hasGyroscope) {
+            gyroBtn.textContent = 'Validating...';
+          }
           gyroBtn.disabled = false;
         }
         
@@ -1448,6 +1459,25 @@
     const gyroBtn = document.getElementById('gyroBtn');
     const gyroControl = document.querySelector('.gyro-control');
     
+    // Helper function to safely set button text (prevents "Disable Gyroscope" on mobile)
+    const setGyroButtonText = (text) => {
+      if (!gyroBtn) return;
+      // Never show "Disable Gyroscope" on mobile devices
+      if (hasGyroscope && text && text.toLowerCase().includes('disable')) {
+        // On mobile, if gyroscope is validated, hide button instead
+        if (gyroValidated && gyroControl) {
+          gyroControl.style.setProperty('display', 'none', 'important');
+          gyroControl.style.setProperty('visibility', 'hidden', 'important');
+          gyroControl.style.setProperty('opacity', '0', 'important');
+          gyroControl.style.setProperty('pointer-events', 'none', 'important');
+          return;
+        }
+        // Otherwise, just don't set the text
+        return;
+      }
+      gyroBtn.textContent = text;
+    };
+    
       // Hide gyroscope controls if device doesn't have gyroscope
       if (!hasGyroscope && gyroControl) {
         // Use setProperty with important to override CSS !important rules
@@ -1464,9 +1494,10 @@
       
       if (gyroBtn) {
         log('Gyro button found, setting up');
+        
       // Update button text for iOS
       if (needsPermission) {
-        gyroBtn.textContent = 'Enable Gyroscope';
+        setGyroButtonText('Enable Gyroscope');
       }
       
       // Use both click and touchstart for better iOS compatibility
@@ -1479,11 +1510,11 @@
             if (needsPermission) {
               log('Requesting permission...');
               requestGyroPermission();
-              gyroBtn.textContent = 'Requesting Permission...';
+              setGyroButtonText('Requesting Permission...');
               gyroBtn.disabled = true;
             } else {
               enableGyroscope(true);
-              gyroBtn.textContent = 'Enable Gyroscope';
+              setGyroButtonText('Enable Gyroscope');
             }
           } else {
             // On mobile devices, once gyroscope is enabled, don't allow disabling
@@ -1493,10 +1524,10 @@
               return; // Don't allow disabling on mobile
             }
             
-            // Desktop: allow toggle
+            // Desktop: allow toggle (mobile never reaches here due to early return above)
             useGyro = !useGyro;
             gyroBtn.classList.toggle('active', useGyro);
-            gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
+            setGyroButtonText(useGyro ? ' ' : 'Enable Gyroscope');
             
             if (!useGyro) {
               targetMouse.x = -1000;
@@ -1514,22 +1545,32 @@
             useGyro = true;
           }
           
-          // On mobile devices, hide the button once gyroscope is enabled and validated
-          // This prevents users from accidentally disabling it
-          if (hasGyroscope && gyroControl) {
-            gyroControl.style.setProperty('display', 'none', 'important');
-            log('Gyroscope enabled on mobile - hiding button to prevent disable');
-          } else {
-            // Desktop: show button with toggle option
-            gyroBtn.disabled = false;
-            gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
-            gyroBtn.classList.toggle('active', useGyro);
+          // On mobile devices, hide the button immediately once gyroscope is enabled and validated
+          // This prevents users from accidentally disabling it and ensures "Disable Gyroscope" never appears
+          if (hasGyroscope) {
+            // Hide button immediately and prevent any text updates
             if (gyroControl) {
-              gyroControl.style.display = 'none';
+              gyroControl.style.setProperty('display', 'none', 'important');
+              gyroControl.style.setProperty('visibility', 'hidden', 'important');
+              gyroControl.style.setProperty('opacity', '0', 'important');
             }
+            // Never set "Disable Gyroscope" text on mobile - button should be hidden
+            log('Gyroscope enabled on mobile - hiding button to prevent disable');
+            return; // Early return to prevent any further button updates on mobile
+          }
+          
+          // Desktop: show button with toggle option
+          gyroBtn.disabled = false;
+          setGyroButtonText(useGyro ? ' ' : 'Enable Gyroscope');
+          gyroBtn.classList.toggle('active', useGyro);
+          if (gyroControl) {
+            gyroControl.style.display = 'none';
           }
         } else if (gyroEnabled && gyroCalibrated && !gyroValidated) {
-          gyroBtn.textContent = 'Validating...';
+          // Only show "Validating..." if button is still visible (not hidden on mobile)
+          if (!hasGyroscope) {
+            gyroBtn.textContent = 'Validating...';
+          }
         }
       };
       
@@ -1537,6 +1578,13 @@
         if (gyroEnabled && gyroCalibrated) {
           checkGyroStatus();
           if (gyroValidated) {
+            // On mobile, ensure button stays hidden after validation
+            if (hasGyroscope && gyroControl) {
+              gyroControl.style.setProperty('display', 'none', 'important');
+              gyroControl.style.setProperty('visibility', 'hidden', 'important');
+              gyroControl.style.setProperty('opacity', '0', 'important');
+              gyroControl.style.setProperty('pointer-events', 'none', 'important');
+            }
             clearInterval(statusCheckInterval);
             statusCheckInterval = null;
           }
@@ -1553,13 +1601,21 @@
             const gyroControl = document.querySelector('.gyro-control');
             
             if (gyroBtn) {
-              // On mobile devices, hide the button once gyroscope is enabled and validated
-              if (hasGyroscope && gyroControl) {
-                gyroControl.style.setProperty('display', 'none', 'important');
+              // On mobile devices, hide the button immediately once gyroscope is enabled and validated
+              // This prevents users from accidentally disabling it and ensures "Disable Gyroscope" never appears
+              if (hasGyroscope) {
+                // Hide button immediately with multiple CSS properties to ensure it's completely hidden
+                if (gyroControl) {
+                  gyroControl.style.setProperty('display', 'none', 'important');
+                  gyroControl.style.setProperty('visibility', 'hidden', 'important');
+                  gyroControl.style.setProperty('opacity', '0', 'important');
+                  gyroControl.style.setProperty('pointer-events', 'none', 'important');
+                }
+                // Never set "Disable Gyroscope" text on mobile - button should be hidden
                 log('Gyroscope validated on mobile (timeout) - hiding button to prevent disable');
               } else {
                 // Desktop: show button with toggle option
-                gyroBtn.textContent = 'Disable Gyroscope';
+                setGyroButtonText('Disable Gyroscope');
                 gyroBtn.classList.add('active');
                 gyroBtn.disabled = false;
                 if (gyroControl) {
@@ -1590,9 +1646,21 @@
               enableGyroscope(true);
               window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
               const gyroBtn = document.getElementById('gyroBtn');
+              const gyroControl = document.querySelector('.gyro-control');
               if (gyroBtn) {
-                gyroBtn.textContent = 'Gyroscope Active';
-                gyroBtn.classList.add('active');
+                // On mobile, hide button once gyroscope is active
+                if (hasGyroscope && gyroControl) {
+                  // Hide button immediately with multiple CSS properties to ensure it's completely hidden
+                  gyroControl.style.setProperty('display', 'none', 'important');
+                  gyroControl.style.setProperty('visibility', 'hidden', 'important');
+                  gyroControl.style.setProperty('opacity', '0', 'important');
+                  gyroControl.style.setProperty('pointer-events', 'none', 'important');
+                  log('Gyroscope active on mobile - hiding button');
+                } else {
+                  // Desktop: show active state
+                  gyroBtn.textContent = 'Gyroscope Active';
+                  gyroBtn.classList.add('active');
+                }
               }
             }
           };
@@ -1615,15 +1683,16 @@
           }, 500);
         }
       }
+      }
       
       autoEnableGyroscope();
-    
-    // Automatically request gyroscope permission on first user interaction anywhere on the page
-    // iOS requires a user gesture to request permission, so we trigger on any interaction
-    if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      let permissionRequested = false;
       
+      // Automatically request gyroscope permission on first user interaction anywhere on the page
+      // iOS requires a user gesture to request permission, so we trigger on any interaction
+      if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        let permissionRequested = false;
+        
         const requestOnInteraction = (e) => {
           log('Interaction event detected:', e.type, 'target:', e.target);
           
@@ -1685,16 +1754,16 @@
             log('Permission already requested in this session, skipping');
           }
         };
-      
-      // Listen for any touch interaction anywhere on the page
-      // Using touch-specific event types for mobile devices
-      const interactionEvents = [
-        'touchstart',   // Touch start - primary touch event
-        'touchend',     // Touch end - when finger lifts
-        'touchmove',    // Touch move - in case start/end are prevented
-        'pointerdown'   // Pointer events (covers touch, pen, etc. on modern browsers)
-      ];
-      
+        
+        // Listen for any touch interaction anywhere on the page
+        // Using touch-specific event types for mobile devices
+        const interactionEvents = [
+          'touchstart',   // Touch start - primary touch event
+          'touchend',     // Touch end - when finger lifts
+          'touchmove',    // Touch move - in case start/end are prevented
+          'pointerdown'   // Pointer events (covers touch, pen, etc. on modern browsers)
+        ];
+        
         // Set up automatic permission request on user interaction
         // This works completely independently of the button - no button required
         if (!gyroEnabled) {
@@ -1755,7 +1824,7 @@
             clearInterval(cleanupInterval);
           }
         }, 10000);
-      }
+        }
       
       // Initialize
       resize();
@@ -1776,6 +1845,7 @@
             });
           }
         }, 1000);
+      }
       }
     })();
   </script>
