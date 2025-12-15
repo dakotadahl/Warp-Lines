@@ -861,16 +861,24 @@
           });
         
         const gyroControl = document.querySelector('.gyro-control');
-        if (gyroControl) {
-          gyroControl.style.display = 'none';
-        }
         
         // Update button
         const gyroBtn = document.getElementById('gyroBtn');
         if (gyroBtn) {
-          gyroBtn.textContent = 'Disable Gyroscope';
-          gyroBtn.classList.add('active');
-          gyroBtn.disabled = false;
+          // On mobile devices, hide the button once gyroscope is enabled and validated
+          // This prevents users from accidentally disabling it
+          if (hasGyroscope && gyroControl) {
+            gyroControl.style.setProperty('display', 'none', 'important');
+            log('Gyroscope validated on mobile - hiding button to prevent disable');
+          } else {
+            // Desktop: show button with toggle option
+            gyroBtn.textContent = 'Disable Gyroscope';
+            gyroBtn.classList.add('active');
+            gyroBtn.disabled = false;
+            if (gyroControl) {
+              gyroControl.style.display = 'none';
+            }
+          }
         }
         
         return true;
@@ -1238,6 +1246,14 @@
               gyroBtn.textContent = 'Enable Gyroscope';
             }
           } else {
+            // On mobile devices, once gyroscope is enabled, don't allow disabling
+            // This prevents accidental disabling and maintains better UX
+            if (hasGyroscope) {
+              log('Gyroscope enabled on mobile - disabling toggle to prevent accidental disable');
+              return; // Don't allow disabling on mobile
+            }
+            
+            // Desktop: allow toggle
             useGyro = !useGyro;
             gyroBtn.classList.toggle('active', useGyro);
             gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
@@ -1257,11 +1273,20 @@
           if (!useGyro) {
             useGyro = true;
           }
-          gyroBtn.disabled = false;
-          gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
-          gyroBtn.classList.toggle('active', useGyro);
-          if (gyroControl) {
-            gyroControl.style.display = 'none';
+          
+          // On mobile devices, hide the button once gyroscope is enabled and validated
+          // This prevents users from accidentally disabling it
+          if (hasGyroscope && gyroControl) {
+            gyroControl.style.setProperty('display', 'none', 'important');
+            log('Gyroscope enabled on mobile - hiding button to prevent disable');
+          } else {
+            // Desktop: show button with toggle option
+            gyroBtn.disabled = false;
+            gyroBtn.textContent = useGyro ? 'Disable Gyroscope' : 'Enable Gyroscope';
+            gyroBtn.classList.toggle('active', useGyro);
+            if (gyroControl) {
+              gyroControl.style.display = 'none';
+            }
           }
         } else if (gyroEnabled && gyroCalibrated && !gyroValidated) {
           gyroBtn.textContent = 'Validating...';
@@ -1285,14 +1310,22 @@
             gyroValidated = true;
             useGyro = true;
             const gyroBtn = document.getElementById('gyroBtn');
-            if (gyroBtn) {
-              gyroBtn.textContent = 'Disable Gyroscope';
-              gyroBtn.classList.add('active');
-              gyroBtn.disabled = false;
-            }
             const gyroControl = document.querySelector('.gyro-control');
-            if (gyroControl) {
-              gyroControl.style.display = 'none';
+            
+            if (gyroBtn) {
+              // On mobile devices, hide the button once gyroscope is enabled and validated
+              if (hasGyroscope && gyroControl) {
+                gyroControl.style.setProperty('display', 'none', 'important');
+                log('Gyroscope validated on mobile (timeout) - hiding button to prevent disable');
+              } else {
+                // Desktop: show button with toggle option
+                gyroBtn.textContent = 'Disable Gyroscope';
+                gyroBtn.classList.add('active');
+                gyroBtn.disabled = false;
+                if (gyroControl) {
+                  gyroControl.style.display = 'none';
+                }
+              }
             }
           }
         }, 5000);
