@@ -2,3 +2,18 @@
 .DS_Store
 **/.DS_Store
 
+# Build outputs
+dist/
+webflow-ready.html
+*.min.html
+*.min.js
+*.min.css
+
+# Dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

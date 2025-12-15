@@ -1,0 +1,23 @@
+{
+  "name": "alluvium",
+  "version": "1.0.0",
+  "description": "Line Field animation for Webflow",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/minify.js",
+    "build:webflow": "npm run build && node scripts/webflow-prep.js",
+    "watch": "nodemon --watch src --exec npm run build"
+  },
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "webflow",
+    "animation",
+    "canvas"
+  ],
+  "author": "",
+  "license": "ISC"
+}
+
