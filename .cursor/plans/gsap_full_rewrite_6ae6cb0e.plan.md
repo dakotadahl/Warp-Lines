@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: testing
     content: Test across devices and browsers for visual parity and performance
-    status: in_progress
+    status: completed
   - id: update-docs
     content: Update documentation files to reflect GSAP architecture
     status: completed
