@@ -172,7 +172,7 @@
       let isPaused = false;
 
       // ============================================================================
-      // Configuration
+      // Configuration (restored original values)
       // ============================================================================
       const CONFIG = {
         pointsPerLine: 60,
@@ -183,23 +183,30 @@
         baseStrength: 300,
         wakeLength: 200,
         wakeLengthSquared: 200 * 200,
+        velocitySmoothing: 0.15,
+        mouseSmoothing: 0.12,
         noiseTimeScale: 0.0000008,
         noiseAmplitude: 8,
         driftSpeed: 0.00000002,
         driftAmplitude: 4,
         driftWaveLength: 0.008,
         vanishingPointY: 0.95,
+        // Performance thresholds
         minVelocityForWake: 0.3,
         maxCursorDistance: 600,
         maxCursorDistanceSquared: 600 * 600,
-        // GSAP animation durations
-        pointEaseDuration: 0.15,       // How quickly points respond to targets
-        dragEffectDuration: 0.3,       // Duration of drag effects
-        ambientCycleDuration: 4,       // Base cycle for ambient animations
-        // Fluidity
+        easeFactorMin: 0.002,
+        easeFactorMax: 0.02,
+        easeFactorDivisor: 800,
+        // Fluidity enhancements (restored)
+        springStrength: 0.15,
+        springDamping: 0.85,
         waveInfluence: 0.08,
+        waveRadius: 80,
+        waveRadiusSquared: 80 * 80,
         verticalFlow: 0.3,
         flowSpeed: 0.00001,
+        pointVelocityDamping: 0.92,
         curlStrength: 0.4,
         turbulenceScale: 0.003
       };
@@ -209,12 +216,14 @@
         damping: 0.94,
         springStrength: 0.0004,
         maxVelocity: 25,
+        overshootFactor: 1.15,
+        oscillationDamping: 0.92,
         waveFrequency: 0.004,
         waveAmplitude: 0.4
       };
 
       // ============================================================================
-      // Canvas Setup (Canvas 2D only - no WebGL)
+      // Canvas Setup (Canvas 2D only)
       // ============================================================================
       const canvas = document.getElementById('canvas');
       if (!canvas) {
@@ -222,7 +231,7 @@
         return;
       }
       
-      const ctx = canvas.getContext('2d', { alpha: false });
+      let ctx = canvas.getContext('2d', { alpha: false });
       log('Using Canvas 2D with GSAP animation engine');
       
       // Cache color values
@@ -230,7 +239,7 @@
       const bgColor = '#0a0506';
 
       // ============================================================================
-      // Noise Generator (Simplex Noise) - kept for organic movement
+      // Noise Generator (Simplex Noise)
       // ============================================================================
       const noise = (() => {
         const perm = new Uint8Array(512);
@@ -283,12 +292,10 @@
       let lines = [];
       let time = 0;
       
-      // Mouse/interaction state - GSAP will tween these
       const mouse = { x: -1000, y: -1000 };
       const targetMouse = { x: -1000, y: -1000 };
+      const prevMouse = { x: -1000, y: -1000 };
       const velocity = { x: 0, y: 0 };
-      let prevMouseX = -1000;
-      let prevMouseY = -1000;
       
       // Gyroscope state
       let gyroEnabled = false;
@@ -308,22 +315,11 @@
       let currentGyroDeltas = { alpha: 0, beta: 0, gamma: 0 };
       
       const vanishingPoint = { x: 0, y: 0 };
-      
-      // GSAP timelines for coordinated animations
-      let ambientTimeline = null;
-      let dragTweens = new Map(); // Store active drag tweens per point
 
       // ============================================================================
       // Line Initialization
       // ============================================================================
       function initLines() {
-        // Kill any existing GSAP animations for old lines
-        if (ambientTimeline) {
-          ambientTimeline.kill();
-        }
-        dragTweens.forEach(tween => tween.kill());
-        dragTweens.clear();
-        
         lines = [];
         
         const originalLineCount = 200;
@@ -348,17 +344,8 @@
           for (let j = 0; j < pointsPerLine; j++) {
             const t = j * pointStep;
             const y = t * height;
-            // Each point has x, y for current position and targetX, targetY for GSAP targets
-            const point = { 
-              x: canvasX, 
-              y, 
-              targetX: canvasX, 
-              targetY: y,
-              ambientOffsetX: 0,
-              ambientOffsetY: 0,
-              dragOffsetX: 0,
-              dragOffsetY: 0
-            };
+            // Restore velocity properties for momentum (vx, vy)
+            const point = { x: canvasX, y, vx: 0, vy: 0 };
             const restPoint = { x: canvasX, y, normalizedY: t };
             
             line.points.push(point);
@@ -367,206 +354,10 @@
           
           lines.push(line);
         }
-        
-        // Initialize ambient animations
-        initAmbientAnimations();
       }
 
       // ============================================================================
-      // GSAP Ambient Animations
-      // ============================================================================
-      function initAmbientAnimations() {
-        ambientTimeline = gsap.timeline({ repeat: -1 });
-        
-        lines.forEach((line, lineIndex) => {
-          const normalizedX = line.normalizedX;
-          
-          line.points.forEach((point, pointIndex) => {
-            const rest = line.restPoints[pointIndex];
-            
-            // Create unique, organic animation for each point
-            const duration = CONFIG.ambientCycleDuration + (Math.random() - 0.5) * 2;
-            const delay = lineIndex * 0.005 + pointIndex * 0.002;
-            
-            // Horizontal drift animation
-            gsap.to(point, {
-              ambientOffsetX: CONFIG.driftAmplitude,
-              duration: duration,
-              ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-              delay: delay
-            });
-            
-            // Vertical flow animation (subtle)
-            gsap.to(point, {
-              ambientOffsetY: CONFIG.verticalFlow * 0.5,
-              duration: duration * 1.3,
-              ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-              delay: delay * 0.7
-            });
-          });
-        });
-      }
-
-      // ============================================================================
-      // GSAP Point Update - called on each tick
-      // ============================================================================
-      function updatePoints() {
-        // Update gyroscope physics
-        updateGyroscopePhysics();
-        
-        if (useGyro && gyroEnabled && gyroCalibrated) {
-          targetMouse.x = gyroPosition.x;
-          targetMouse.y = gyroPosition.y;
-        }
-        
-        // Smooth mouse position with GSAP-style lerp
-        const mouseSmoothing = 0.12;
-        const newMouseX = mouse.x + (targetMouse.x - mouse.x) * mouseSmoothing;
-        const newMouseY = mouse.y + (targetMouse.y - mouse.y) * mouseSmoothing;
-        
-        // Calculate velocity
-        const mouseDeltaX = newMouseX - prevMouseX;
-        const mouseDeltaY = newMouseY - prevMouseY;
-        velocity.x += (mouseDeltaX - velocity.x) * 0.15;
-        velocity.y += (mouseDeltaY - velocity.y) * 0.15;
-        
-        prevMouseX = mouse.x;
-        prevMouseY = mouse.y;
-        mouse.x = newMouseX;
-        mouse.y = newMouseY;
-        
-        const velMag = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-        const hasVelocity = velMag > CONFIG.minVelocityForWake;
-        
-        // Pre-calculate time-based values for noise
-        const timeNoiseX = time * CONFIG.noiseTimeScale;
-        const timeNoiseY = timeNoiseX * 0.7;
-        const timeDrift = time * CONFIG.driftSpeed * 1000;
-        const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
-        
-        // Update each line's points
-        lines.forEach((line, lineIndex) => {
-          const normalizedX = line.normalizedX;
-          const noiseX = normalizedX * 3 + timeNoiseX;
-          const driftBase = Math.sin(normalizedX * Math.PI * 6 + timeDrift) * CONFIG.driftAmplitude;
-          
-          // Get neighboring lines for wave influence
-          const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : null;
-          const nextLine = lineIndex < lines.length - 1 ? lines[lineIndex + 1] : null;
-          
-          line.points.forEach((point, pointIndex) => {
-            const rest = line.restPoints[pointIndex];
-            
-            // Calculate wave influence from neighbors
-            let neighborInfluenceX = 0;
-            if (prevLine && nextLine && pointIndex < prevLine.points.length && pointIndex < nextLine.points.length) {
-              const prevPoint = prevLine.points[pointIndex];
-              const nextPoint = nextLine.points[pointIndex];
-              neighborInfluenceX = ((prevPoint.x - rest.x) + (nextPoint.x - rest.x)) * CONFIG.waveInfluence * 0.5;
-            }
-            
-            // Calculate noise-based ambient movement
-            const noiseVal = noise(noiseX, rest.normalizedY * 2 + timeNoiseY);
-            const turbulenceVal = noise(
-              normalizedX * 5 + time * CONFIG.turbulenceScale,
-              rest.normalizedY * 3 + time * CONFIG.turbulenceScale * 0.5
-            ) * 0.3;
-            
-            // Distance from cursor
-            const dxFromCursor = rest.x - mouse.x;
-            const dyFromCursor = rest.y - mouse.y;
-            const distFromCursorSquared = dxFromCursor * dxFromCursor + dyFromCursor * dyFromCursor;
-            
-            // Calculate ambient effect
-            let ambientX = point.ambientOffsetX;
-            let ambientY = point.ambientOffsetY + verticalFlowOffset;
-            
-            if (distFromCursorSquared < CONFIG.maxCursorDistanceSquared) {
-              const distFromCursor = Math.sqrt(distFromCursorSquared);
-              const ambientScale = 0.3 + (1 - distFromCursor / CONFIG.maxCursorDistance) * 2;
-              const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
-              
-              // Curl effect
-              const curlAngle = Math.atan2(dyFromCursor, dxFromCursor) + Math.PI / 2;
-              const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * ambientScale;
-              const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * ambientScale;
-              
-              ambientX += (noiseVal * CONFIG.noiseAmplitude + driftBase + turbulenceVal) * ambientScale * dirX + curlX;
-              ambientY += curlY * 0.5;
-            } else {
-              ambientX += (noiseVal * CONFIG.noiseAmplitude + driftBase + turbulenceVal) * 0.3;
-            }
-            
-            ambientX += neighborInfluenceX;
-            
-            // Calculate drag effect
-            const dx = rest.x - mouse.x;
-            const dy = rest.y - mouse.y;
-            const distSquared = dx * dx + dy * dy;
-            
-            if (distSquared < CONFIG.wakeLengthSquared && hasVelocity) {
-              const dist = Math.sqrt(distSquared);
-              const distFalloff = Math.pow(1 - dist / CONFIG.wakeLength, 2);
-              
-              const invDist = 1 / Math.max(dist, 1);
-              const pushX = dx * invDist;
-              const pushY = dy * invDist;
-              
-              const dragInfluence = Math.min(velMag / 5, 1);
-              const invVelMag = 1 / velMag;
-              const blendedX = pushX * (1 - dragInfluence * 0.7) + velocity.x * invVelMag * dragInfluence;
-              const blendedY = pushY * (1 - dragInfluence * 0.7) + velocity.y * invVelMag * dragInfluence;
-              
-              const velFactor = Math.min(velMag / 4, 1);
-              const strength = (CONFIG.baseStrength * velFactor * velFactor + velMag * CONFIG.dragStrength) * distFalloff;
-              
-              // Use GSAP to animate drag offset
-              const pointKey = `${lineIndex}-${pointIndex}`;
-              const targetDragX = blendedX * strength;
-              const targetDragY = blendedY * strength * 0.4;
-              
-              // Kill existing drag tween and create new one
-              if (dragTweens.has(pointKey)) {
-                dragTweens.get(pointKey).kill();
-              }
-              
-              const dragTween = gsap.to(point, {
-                dragOffsetX: targetDragX,
-                dragOffsetY: targetDragY,
-                duration: CONFIG.dragEffectDuration,
-                ease: "power2.out",
-                onComplete: () => {
-                  // Animate back to zero after drag
-                  gsap.to(point, {
-                    dragOffsetX: 0,
-                    dragOffsetY: 0,
-                    duration: CONFIG.dragEffectDuration * 2,
-                    ease: "elastic.out(1, 0.5)"
-                  });
-                }
-              });
-              
-              dragTweens.set(pointKey, dragTween);
-            }
-            
-            // Calculate final target position
-            point.targetX = rest.x + ambientX + point.dragOffsetX;
-            point.targetY = rest.y + ambientY + point.dragOffsetY;
-            
-            // GSAP-style smooth interpolation to target
-            const easeFactor = CONFIG.pointEaseDuration;
-            point.x += (point.targetX - point.x) * easeFactor;
-            point.y += (point.targetY - point.y) * easeFactor;
-          });
-        });
-      }
-
-      // ============================================================================
-      // Resize Handler
+      // Resize Handler (fixed to reset transform)
       // ============================================================================
       function resize() {
         const dpr = window.devicePixelRatio || 1;
@@ -578,6 +369,8 @@
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
         
+        // Reset transform and apply fresh scale (fixes compounding issue)
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
         
         vanishingPoint.x = width / 2;
@@ -603,7 +396,195 @@
       }
 
       // ============================================================================
-      // Rendering - Canvas 2D
+      // Point Update Logic (restored original physics)
+      // ============================================================================
+      function updatePoints() {
+        updateGyroscopePhysics();
+        
+        if (useGyro && gyroEnabled && gyroCalibrated) {
+          targetMouse.x = gyroPosition.x;
+          targetMouse.y = gyroPosition.y;
+        }
+        
+        // Update mouse position with smoothing
+        prevMouse.x = mouse.x;
+        prevMouse.y = mouse.y;
+        mouse.x += (targetMouse.x - mouse.x) * CONFIG.mouseSmoothing;
+        mouse.y += (targetMouse.y - mouse.y) * CONFIG.mouseSmoothing;
+        
+        // Update velocity
+        const mouseDeltaX = mouse.x - prevMouse.x;
+        const mouseDeltaY = mouse.y - prevMouse.y;
+        velocity.x += (mouseDeltaX - velocity.x) * CONFIG.velocitySmoothing;
+        velocity.y += (mouseDeltaY - velocity.y) * CONFIG.velocitySmoothing;
+        
+        // Pre-calculate time-based values
+        const timeNoiseX = time * CONFIG.noiseTimeScale;
+        const timeNoiseY = timeNoiseX * 0.7;
+        const timeDrift = time * CONFIG.driftSpeed * 1000;
+        const velMagSquared = velocity.x * velocity.x + velocity.y * velocity.y;
+        const velMag = Math.sqrt(velMagSquared);
+        const hasVelocity = velMag > CONFIG.minVelocityForWake;
+        
+        // Cache constants
+        const wakeLength = CONFIG.wakeLength;
+        const wakeLengthSquared = CONFIG.wakeLengthSquared;
+        const maxCursorDistSquared = CONFIG.maxCursorDistanceSquared;
+        const noiseAmp = CONFIG.noiseAmplitude;
+        const driftAmp = CONFIG.driftAmplitude;
+        const baseStrength = CONFIG.baseStrength;
+        const dragStrength = CONFIG.dragStrength;
+        
+        // Pre-calculate vertical flow effect
+        const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
+        
+        // Update each line
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const normalizedX = line.normalizedX;
+          const noiseX = normalizedX * 3 + timeNoiseX;
+          
+          // Pre-calculate noise and drift for this line
+          const driftBase = Math.sin(normalizedX * Math.PI * 6 + timeDrift) * driftAmp;
+          
+          // Get neighboring lines for wave influence
+          const prevLine = i > 0 ? lines[i - 1] : null;
+          const nextLine = i < lines.length - 1 ? lines[i + 1] : null;
+          const waveStrength = CONFIG.waveInfluence;
+          
+          // Update each point in the line
+          for (let j = 0; j < line.points.length; j++) {
+            const rest = line.restPoints[j];
+            const point = line.points[j];
+            
+            // Calculate wave influence from neighboring lines
+            let neighborInfluenceX = 0;
+            if (prevLine && nextLine && j < prevLine.points.length && j < nextLine.points.length) {
+              const prevPoint = prevLine.points[j];
+              const nextPoint = nextLine.points[j];
+              const dxPrev = prevPoint.x - rest.x;
+              const dxNext = nextPoint.x - rest.x;
+              neighborInfluenceX = (dxPrev + dxNext) * waveStrength * 0.5;
+            }
+            
+            // Calculate ambient noise effect with turbulence
+            const noiseVal = noise(noiseX, rest.normalizedY * 2 + timeNoiseY);
+            const turbulenceVal = noise(
+              normalizedX * 5 + time * CONFIG.turbulenceScale,
+              rest.normalizedY * 3 + time * CONFIG.turbulenceScale * 0.5
+            ) * 0.3;
+            
+            // Distance from cursor
+            const dxFromCursor = rest.x - mouse.x;
+            const dyFromCursor = rest.y - mouse.y;
+            const distFromCursorSquared = dxFromCursor * dxFromCursor + dyFromCursor * dyFromCursor;
+            
+            // Ambient effect
+            let ambientX = 0;
+            let ambientY = verticalFlowOffset;
+            
+            if (distFromCursorSquared < maxCursorDistSquared) {
+              const distFromCursor = Math.sqrt(distFromCursorSquared);
+              const ambientScale = 0.3 + (1 - distFromCursor / CONFIG.maxCursorDistance) * 2;
+              const dirX = distFromCursor > 0 ? dxFromCursor / distFromCursor : 0;
+              const dirY = distFromCursor > 0 ? dyFromCursor / distFromCursor : 0;
+              
+              // Curl/rotation effect around cursor
+              const curlAngle = Math.atan2(dyFromCursor, dxFromCursor) + Math.PI / 2;
+              const curlX = Math.cos(curlAngle) * CONFIG.curlStrength * ambientScale;
+              const curlY = Math.sin(curlAngle) * CONFIG.curlStrength * ambientScale;
+              
+              ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * ambientScale * dirX + curlX;
+              ambientY += curlY * 0.5;
+            } else {
+              ambientX = (noiseVal * noiseAmp + driftBase + turbulenceVal) * 0.3;
+            }
+            
+            // Add wave influence from neighbors
+            ambientX += neighborInfluenceX;
+            
+            // Calculate drag effect
+            const dx = rest.x - mouse.x;
+            const dy = rest.y - mouse.y;
+            const distSquared = dx * dx + dy * dy;
+            
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+            
+            if (distSquared < wakeLengthSquared && hasVelocity) {
+              const dist = Math.sqrt(distSquared);
+              const distFalloff = Math.pow(1 - dist / wakeLength, 2);
+              
+              const invDist = 1 / Math.max(dist, 1);
+              const pushX = dx * invDist;
+              const pushY = dy * invDist;
+              
+              const dragInfluence = Math.min(velMag / 5, 1);
+              const invVelMag = 1 / velMag;
+              const blendedX = pushX * (1 - dragInfluence * 0.7) + velocity.x * invVelMag * dragInfluence;
+              const blendedY = pushY * (1 - dragInfluence * 0.7) + velocity.y * invVelMag * dragInfluence;
+              
+              const velFactor = Math.min(velMag / 4, 1);
+              const strength = (baseStrength * velFactor * velFactor + velMag * dragStrength) * distFalloff;
+              
+              dragOffsetX = blendedX * strength;
+              dragOffsetY = blendedY * strength * 0.4;
+            }
+            
+            // Calculate target position
+            const targetX = rest.x + ambientX + dragOffsetX;
+            const targetY = rest.y + ambientY + dragOffsetY;
+            
+            // Spring connection to adjacent points for fluidity
+            let springForceX = 0;
+            let springForceY = 0;
+            
+            if (j > 0) {
+              const prevPoint = line.points[j - 1];
+              const springDX = prevPoint.x - point.x;
+              const springDY = prevPoint.y - point.y;
+              springForceX += springDX * CONFIG.springStrength;
+              springForceY += springDY * CONFIG.springStrength;
+            }
+            
+            if (j < line.points.length - 1) {
+              const nextPoint = line.points[j + 1];
+              const springDX = nextPoint.x - point.x;
+              const springDY = nextPoint.y - point.y;
+              springForceX += springDX * CONFIG.springStrength;
+              springForceY += springDY * CONFIG.springStrength;
+            }
+            
+            // Apply momentum (velocity persistence)
+            point.vx *= CONFIG.pointVelocityDamping;
+            point.vy *= CONFIG.pointVelocityDamping;
+            
+            // Calculate forces
+            const diffX = targetX - point.x;
+            const diffY = targetY - point.y;
+            const diffSquared = diffX * diffX + diffY * diffY;
+            const diffMag = Math.sqrt(diffSquared);
+            
+            // Adaptive easing for smoother motion
+            const easeFactor = CONFIG.easeFactorMin + Math.min(diffMag / CONFIG.easeFactorDivisor, CONFIG.easeFactorMax);
+            
+            // Add spring forces to velocity
+            point.vx += (diffX * easeFactor + springForceX) * (1 - CONFIG.springDamping);
+            point.vy += (diffY * easeFactor + springForceY) * (1 - CONFIG.springDamping);
+            
+            // Apply velocity with damping
+            point.x += point.vx;
+            point.y += point.vy;
+            
+            // Also apply direct easing for responsiveness
+            point.x += diffX * easeFactor * CONFIG.springDamping;
+            point.y += diffY * easeFactor * CONFIG.springDamping;
+          }
+        }
+      }
+
+      // ============================================================================
+      // Rendering
       // ============================================================================
       function drawLine(points) {
         if (points.length < 2) return;
@@ -630,7 +611,7 @@
         
         time = performance.now();
         
-        // Update point positions
+        // Update physics
         updatePoints();
         
         // Clear and render
@@ -646,7 +627,7 @@
       }
 
       // ============================================================================
-      // Gyroscope Functions (kept mostly the same, with GSAP smoothing)
+      // Gyroscope Functions
       // ============================================================================
       function requestGyroPermission() {
         log('requestGyroPermission called');
@@ -819,14 +800,8 @@
         const alphaInfluence = 0.3;
         const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 60));
         
-        // Use GSAP to smoothly animate gyro target
-        gsap.to(gyroTarget, {
-          x: Math.max(0, Math.min(width, targetX + alphaNormalized * width * alphaInfluence)),
-          y: Math.max(0, Math.min(height, targetY)),
-          duration: 0.1,
-          ease: "power2.out",
-          overwrite: true
-        });
+        gyroTarget.x = Math.max(0, Math.min(width, targetX + alphaNormalized * width * alphaInfluence));
+        gyroTarget.y = Math.max(0, Math.min(height, targetY));
         
         const tiltMagnitude = Math.sqrt(deltaGamma * deltaGamma + deltaBeta * deltaBeta);
         const tiltDirectionX = deltaGamma !== 0 ? deltaGamma / Math.abs(deltaGamma) : 0;
@@ -873,7 +848,7 @@
       }
 
       // ============================================================================
-      // Event Handlers
+      // Event Handlers (using GSAP for smooth transitions)
       // ============================================================================
       function handleMouseMove(e) {
         if (!useGyro) {
@@ -884,11 +859,11 @@
 
       function handleMouseLeave() {
         if (!useGyro) {
-          // Use GSAP to smoothly animate mouse off-screen
+          // Use GSAP for smooth exit animation
           gsap.to(targetMouse, {
             x: -1000,
             y: -1000,
-            duration: 0.3,
+            duration: 0.5,
             ease: "power2.out"
           });
         }
@@ -906,7 +881,7 @@
           gsap.to(targetMouse, {
             x: -1000,
             y: -1000,
-            duration: 0.3,
+            duration: 0.5,
             ease: "power2.out"
           });
         }
@@ -919,12 +894,6 @@
       // Page visibility handler
       document.addEventListener('visibilitychange', function() {
         isPaused = document.hidden;
-        if (!isPaused) {
-          // Resume GSAP animations
-          gsap.globalTimeline.resume();
-        } else {
-          gsap.globalTimeline.pause();
-        }
       });
 
       // Event listeners
@@ -1110,7 +1079,7 @@
       // Initialize
       resize();
       
-      // Use GSAP ticker instead of requestAnimationFrame
+      // Use GSAP ticker for render loop
       gsap.ticker.add(render);
       gsap.ticker.fps(60);
       
