@@ -2,7 +2,7 @@
 
 ## How the Scroll Transition Effect Works
 
-This document explains the scroll transition effect in `src/Homepage/index.html`, covering the logic, animation timing, and interactive inputs.
+This document explains the scroll transition effect in `src/Homepage/index-gsap.html`, covering the logic, animation timing, and interactive inputs.
 
 > **Note:** As of January 2026, the animation system uses GSAP for all animations. The scroll-triggered convergence can be added using GSAP's ScrollTrigger plugin.
 
@@ -116,10 +116,8 @@ if (distSquared < CONFIG.wakeLengthSquared && hasVelocity) {
 
 ```javascript
 function handleMouseMove(e) {
-  if (!useGyro) {
-    targetMouse.x = e.clientX;
-    targetMouse.y = e.clientY;
-  }
+  targetMouse.x = e.clientX;
+  targetMouse.y = e.clientY;
 }
 
 // Smooth interpolation in render loop
@@ -131,36 +129,18 @@ mouse.y += (targetMouse.y - mouse.y) * 0.12;
 
 ```javascript
 function handleMouseLeave() {
-  if (!useGyro) {
-    gsap.to(targetMouse, {
-      x: -1000,
-      y: -1000,
-      duration: 0.3,
-      ease: "power2.out"
-    });
-  }
+  gsap.to(targetMouse, {
+    x: -1000,
+    y: -1000,
+    duration: 0.3,
+    ease: "power2.out"
+  });
 }
 ```
 
 ---
 
-## 6. Gyroscope Integration
-
-Gyroscope targets are animated smoothly with GSAP:
-
-```javascript
-gsap.to(gyroTarget, {
-  x: Math.max(0, Math.min(width, targetX)),
-  y: Math.max(0, Math.min(height, targetY)),
-  duration: 0.1,
-  ease: "power2.out",
-  overwrite: true  // Cancel previous tween
-});
-```
-
----
-
-## 7. Adding Scroll-Triggered Convergence
+## 6. Adding Scroll-Triggered Convergence
 
 To add scroll-driven line convergence, use ScrollTrigger:
 
@@ -206,7 +186,7 @@ function updateConvergence(scrollProgress) {
 
 ---
 
-## 8. Visual Effects
+## 7. Visual Effects
 
 ### Ambient Noise
 
@@ -239,7 +219,6 @@ if (prevLine && nextLine) {
 - Ticker-based render loop (60fps)
 - Timeline animations for ambient effects
 - Tween-based drag effects with elastic return
-- Smooth gyroscope transitions
 
 **Interactive Elements:**
 - Mouse/touch tracking with interpolation

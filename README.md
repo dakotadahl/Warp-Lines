@@ -18,7 +18,9 @@ npm run build:webflow
 Alluvium/
 ├── src/                    # Source code (unminified)
 │   └── Homepage/
-│       └── index.html     # Development version
+│       └── index-gsap.html   # Line field (GSAP) — main development source
+├── Homepage/
+│   └── index-legacy.html  # Line field (requestAnimationFrame) — legacy
 ├── dist/                   # Generated files (gitignored)
 │   └── webflow/
 │       └── index.html     # Minified, Webflow-ready
@@ -30,7 +32,7 @@ Alluvium/
 
 ## Development Workflow
 
-1. **Edit source code**: Make changes to `src/Homepage/index.html`
+1. **Edit source code**: Make changes to `src/Homepage/index-gsap.html` (GSAP line field)
 2. **Build**: Run `npm run build` to generate minified version
 3. **Deploy**: Run `npm run build:webflow` and copy from `dist/webflow/index.html` or `webflow-ready.html`
 4. **Paste**: Copy the minified code into Webflow's custom code section

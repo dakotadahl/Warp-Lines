@@ -24,65 +24,6 @@
       }
     }
     
-    .gyro-control {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 3000;
-      display: none;
-    }
-    
-    @media (hover: none) and (pointer: coarse) {
-      .gyro-control {
-        display: block !important;
-      }
-    }
-    
-    /* Always show on iOS for permission request */
-    @supports (-webkit-touch-callout: none) {
-      .gyro-control {
-        display: block !important;
-      }
-    }
-    
-    /* Force show on Safari iOS */
-    @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      @supports (-webkit-appearance: none) {
-        .gyro-control {
-          display: block !important;
-        }
-      }
-    }
-    
-    .gyro-btn {
-      background: none;
-      border: none;
-      color: rgba(253, 87, 75, 0.9);
-      padding: 16px 24px;
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 12px;
-      font-weight: normal;
-      text-transform: uppercase;
-      letter-spacing: 1em;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-    
-    .gyro-btn:hover {
-      color: rgba(253, 87, 75, 1);
-    }
-    
-    .gyro-btn.active {
-      color: rgba(253, 87, 75, 1);
-    }
-    
-    .gyro-btn:active {
-      opacity: 0.7;
-    }
-    
     .dev-mode {
       position: fixed;
       top: 50%;
@@ -142,9 +83,6 @@
 </head>
 <body>
   <div class="container"><canvas id="canvas"></canvas></div>
-  <div class="gyro-control">
-    <button id="gyroBtn" class="gyro-btn">Enable Gyroscope</button>
-  </div>
   <script>
     (function() {
       'use strict';
@@ -205,17 +143,6 @@
         pointVelocityDamping: 0.92,
         curlStrength: 0.4,
         turbulenceScale: 0.003
-      };
-
-      const GYRO_CONFIG = {
-        tiltSensitivity: 0.002,
-        damping: 0.94,
-        springStrength: 0.0004,
-        maxVelocity: 25,
-        overshootFactor: 1.15,
-        oscillationDamping: 0.92,
-        waveFrequency: 0.004,
-        waveAmplitude: 0.4
       };
 
       // ============================================================================
@@ -292,24 +219,6 @@
       const targetMouse = { x: -1000, y: -1000 };
       const prevMouse = { x: -1000, y: -1000 };
       const velocity = { x: 0, y: 0 };
-      
-      // Gyroscope state
-      let gyroEnabled = false;
-      let gyroCalibrated = false;
-      let gyroCalibration = { alpha: 0, beta: 0, gamma: 0 };
-      let gyroTarget = { x: -1000, y: -1000 };
-      let gyroPosition = { x: 0, y: 0 };
-      let gyroVelocity = { x: 0, y: 0 };
-      let gyroAcceleration = { x: 0, y: 0 };
-      let useGyro = false;
-      let gyroValidated = false;
-      let gyroValidationSamples = [];
-      let gyroValidationStartTime = 0;
-      let isAutoEnabled = false;
-      
-      let currentGyroValues = { alpha: 0, beta: 0, gamma: 0 };
-      let currentGyroDeltas = { alpha: 0, beta: 0, gamma: 0 };
-      
       const vanishingPoint = { x: 0, y: 0 };
 
       // ============================================================================
@@ -371,23 +280,6 @@
         
         vanishingPoint.x = width / 2;
         vanishingPoint.y = height * CONFIG.vanishingPointY;
-        
-        if (gyroTarget.x === -1000) {
-          const centerX = width / 2;
-          const centerY = height / 2;
-          gyroTarget.x = centerX;
-          gyroTarget.y = centerY;
-          gyroPosition.x = centerX;
-          gyroPosition.y = centerY;
-        } else if (gyroCalibrated) {
-          const centerX = width / 2;
-          const centerY = height / 2;
-          gyroPosition.x = centerX;
-          gyroPosition.y = centerY;
-          gyroTarget.x = centerX;
-          gyroTarget.y = centerY;
-        }
-        
         initLines();
       }
 
@@ -395,13 +287,6 @@
       // Point Update Logic (restored original physics)
       // ============================================================================
       function updatePoints() {
-        updateGyroscopePhysics();
-        
-        if (useGyro && gyroEnabled && gyroCalibrated) {
-          targetMouse.x = gyroPosition.x;
-          targetMouse.y = gyroPosition.y;
-        }
-        
         // Update mouse position with smoothing
         prevMouse.x = mouse.x;
         prevMouse.y = mouse.y;
@@ -623,266 +508,38 @@
       }
 
       // ============================================================================
-      // Gyroscope Functions
-      // ============================================================================
-      function requestGyroPermission() {
-        log('requestGyroPermission called');
-        
-        if (typeof DeviceOrientationEvent !== 'undefined' && 
-            typeof DeviceOrientationEvent.requestPermission === 'function') {
-          try {
-            DeviceOrientationEvent.requestPermission()
-              .then(response => {
-                if (response === 'granted') {
-                  enableGyroscope(true);
-                  window.removeEventListener('deviceorientation', handleDeviceOrientation);
-                  window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
-                  log('Device orientation permission granted');
-                  
-                  const gyroBtn = document.getElementById('gyroBtn');
-                  if (gyroBtn) {
-                    gyroBtn.textContent = 'Waiting for calibration...';
-                    gyroBtn.disabled = false;
-                  }
-                } else {
-                  logWarn('Device orientation permission denied');
-                  const gyroBtn = document.getElementById('gyroBtn');
-                  if (gyroBtn) {
-                    gyroBtn.textContent = 'Permission Denied - Tap to Retry';
-                    gyroBtn.disabled = false;
-                  }
-                }
-              })
-              .catch(error => {
-                logError('Error requesting permission:', error);
-                const gyroBtn = document.getElementById('gyroBtn');
-                if (gyroBtn) {
-                  gyroBtn.textContent = 'Error - Tap to Retry';
-                  gyroBtn.disabled = false;
-                }
-              });
-          } catch (error) {
-            logError('Exception calling requestPermission:', error);
-          }
-        } else {
-          enableGyroscope(true);
-        }
-      }
-
-      function enableGyroscope(autoEnable = false) {
-        gyroEnabled = true;
-        gyroCalibrated = false;
-        gyroValidated = false;
-        gyroValidationSamples = [];
-        gyroValidationStartTime = Date.now();
-        isAutoEnabled = autoEnable;
-        log('Gyroscope enabled');
-      }
-
-      function calibrateGyroscope(alpha, beta, gamma) {
-        gyroCalibration.alpha = alpha || 0;
-        gyroCalibration.beta = beta || 0;
-        gyroCalibration.gamma = gamma || 0;
-        gyroCalibrated = true;
-        if (isAutoEnabled) {
-          useGyro = true;
-        }
-      }
-
-      function validateGyroscopeInput(e) {
-        if (gyroValidated) return true;
-        
-        const { alpha, beta, gamma } = e;
-        
-        if (alpha === null || beta === null || gamma === null) {
-          return false;
-        }
-        
-        gyroValidationSamples.push({ alpha, beta, gamma, timestamp: Date.now() });
-        
-        const oneSecondAgo = Date.now() - 1000;
-        gyroValidationSamples = gyroValidationSamples.filter(s => s.timestamp > oneSecondAgo);
-        
-        if (gyroValidationSamples.length < 5) {
-          return false;
-        }
-        
-        const validationDuration = Date.now() - gyroValidationStartTime;
-        let maxDiff = 0;
-        
-        for (let i = 1; i < gyroValidationSamples.length; i++) {
-          const prev = gyroValidationSamples[i - 1];
-          const curr = gyroValidationSamples[i];
-          maxDiff = Math.max(maxDiff, 
-            Math.abs(curr.alpha - prev.alpha),
-            Math.abs(curr.beta - prev.beta),
-            Math.abs(curr.gamma - prev.gamma)
-          );
-        }
-        
-        if (maxDiff > 0.5 || validationDuration > 2000 || gyroValidationSamples.length >= 5) {
-          gyroValidated = true;
-          useGyro = true;
-          
-          const gyroControl = document.querySelector('.gyro-control');
-          const gyroBtn = document.getElementById('gyroBtn');
-          
-          if (gyroBtn && hasGyroscope) {
-            if (gyroControl) {
-              gyroControl.style.setProperty('display', 'none', 'important');
-            }
-          }
-          
-          return true;
-        }
-        
-        return false;
-      }
-
-      function handleDeviceOrientation(e) {
-        if (!gyroEnabled) {
-          const hasValidData = e.alpha !== null || e.beta !== null || e.gamma !== null;
-          if (hasValidData) {
-            enableGyroscope(true);
-          } else {
-            return;
-          }
-        }
-        
-        validateGyroscopeInput(e);
-        
-        const alpha = e.alpha !== null ? e.alpha : 0;
-        const beta = e.beta !== null ? e.beta : 0;
-        const gamma = e.gamma !== null ? e.gamma : 0;
-        
-        currentGyroValues = { alpha, beta, gamma };
-        
-        if (!gyroCalibrated) {
-          calibrateGyroscope(alpha, beta, gamma);
-          const centerX = width / 2;
-          const centerY = height / 2;
-          gyroTarget.x = centerX;
-          gyroTarget.y = centerY;
-          gyroPosition.x = centerX;
-          gyroPosition.y = centerY;
-          gyroVelocity.x = 0;
-          gyroVelocity.y = 0;
-          return;
-        }
-        
-        const deltaAlpha = alpha - gyroCalibration.alpha;
-        const deltaBeta = beta - gyroCalibration.beta;
-        const deltaGamma = gamma - gyroCalibration.gamma;
-        
-        currentGyroDeltas = { alpha: deltaAlpha, beta: deltaBeta, gamma: deltaGamma };
-        
-        if (!useGyro) return;
-        
-        let normalizedAlpha = deltaAlpha;
-        if (normalizedAlpha > 180) normalizedAlpha -= 360;
-        if (normalizedAlpha < -180) normalizedAlpha += 360;
-        
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        const gammaRange = 30;
-        const gammaNormalized = Math.max(-1, Math.min(1, deltaGamma / gammaRange));
-        const targetX = centerX + gammaNormalized * width * 0.7;
-        
-        const betaRange = 35;
-        const betaNormalized = Math.max(-1, Math.min(1, deltaBeta / betaRange));
-        const targetY = centerY + betaNormalized * height * 0.7;
-        
-        const alphaInfluence = 0.3;
-        const alphaNormalized = Math.max(-1, Math.min(1, normalizedAlpha / 60));
-        
-        gyroTarget.x = Math.max(0, Math.min(width, targetX + alphaNormalized * width * alphaInfluence));
-        gyroTarget.y = Math.max(0, Math.min(height, targetY));
-        
-        const tiltMagnitude = Math.sqrt(deltaGamma * deltaGamma + deltaBeta * deltaBeta);
-        const tiltDirectionX = deltaGamma !== 0 ? deltaGamma / Math.abs(deltaGamma) : 0;
-        const tiltDirectionY = deltaBeta !== 0 ? deltaBeta / Math.abs(deltaBeta) : 0;
-        
-        gyroAcceleration.x = tiltDirectionX * tiltMagnitude * GYRO_CONFIG.tiltSensitivity;
-        gyroAcceleration.y = tiltDirectionY * tiltMagnitude * GYRO_CONFIG.tiltSensitivity;
-      }
-
-      function updateGyroscopePhysics() {
-        if (!useGyro || !gyroCalibrated) return;
-        
-        const dx = gyroTarget.x - gyroPosition.x;
-        const dy = gyroTarget.y - gyroPosition.y;
-        
-        const springForceX = dx * GYRO_CONFIG.springStrength;
-        const springForceY = dy * GYRO_CONFIG.springStrength;
-        
-        gyroVelocity.x += gyroAcceleration.x + springForceX;
-        gyroVelocity.y += gyroAcceleration.y + springForceY;
-        
-        gyroVelocity.x *= GYRO_CONFIG.damping;
-        gyroVelocity.y *= GYRO_CONFIG.damping;
-        
-        const velMag = Math.sqrt(gyroVelocity.x * gyroVelocity.x + gyroVelocity.y * gyroVelocity.y);
-        if (velMag > GYRO_CONFIG.maxVelocity) {
-          gyroVelocity.x = (gyroVelocity.x / velMag) * GYRO_CONFIG.maxVelocity;
-          gyroVelocity.y = (gyroVelocity.y / velMag) * GYRO_CONFIG.maxVelocity;
-        }
-        
-        gyroPosition.x += gyroVelocity.x;
-        gyroPosition.y += gyroVelocity.y;
-        
-        const oscillationTime = time * GYRO_CONFIG.waveFrequency;
-        const oscillationX = Math.sin(oscillationTime + gyroPosition.x * 0.01) * GYRO_CONFIG.waveAmplitude;
-        const oscillationY = Math.cos(oscillationTime + gyroPosition.y * 0.01) * GYRO_CONFIG.waveAmplitude;
-        
-        const oscillationDamping = 1 - Math.min(velMag / GYRO_CONFIG.maxVelocity, 0.7);
-        gyroPosition.x += oscillationX * oscillationDamping;
-        gyroPosition.y += oscillationY * oscillationDamping;
-        
-        gyroPosition.x = Math.max(0, Math.min(width, gyroPosition.x));
-        gyroPosition.y = Math.max(0, Math.min(height, gyroPosition.y));
-      }
-
-      // ============================================================================
       // Event Handlers (using GSAP for smooth transitions)
       // ============================================================================
       function handleMouseMove(e) {
-        if (!useGyro) {
-          targetMouse.x = e.clientX;
-          targetMouse.y = e.clientY;
-        }
+        targetMouse.x = e.clientX;
+        targetMouse.y = e.clientY;
       }
 
       function handleMouseLeave() {
-        if (!useGyro) {
-          // Use GSAP for smooth exit animation
-          gsap.to(targetMouse, {
-            x: -1000,
-            y: -1000,
-            duration: 0.5,
-            ease: "power2.out",
-            overwrite: true  // Prevents tween accumulation
-          });
-        }
+        gsap.to(targetMouse, {
+          x: -1000,
+          y: -1000,
+          duration: 0.5,
+          ease: "power2.out",
+          overwrite: true
+        });
       }
 
       function handleTouchMove(e) {
-        if (!useGyro && e.touches.length > 0) {
+        if (e.touches.length > 0) {
           targetMouse.x = e.touches[0].clientX;
           targetMouse.y = e.touches[0].clientY;
         }
       }
 
       function handleTouchEnd() {
-        if (!useGyro) {
-          gsap.to(targetMouse, {
-            x: -1000,
-            y: -1000,
-            duration: 0.5,
-            ease: "power2.out",
-            overwrite: true  // Prevents tween accumulation
-          });
-        }
+        gsap.to(targetMouse, {
+          x: -1000,
+          y: -1000,
+          duration: 0.5,
+          ease: "power2.out",
+          overwrite: true
+        });
       }
 
       // ============================================================================
@@ -903,176 +560,6 @@
       window.addEventListener('mouseleave', handleMouseLeave, { signal });
       window.addEventListener('touchmove', handleTouchMove, { passive: true, signal });
       window.addEventListener('touchend', handleTouchEnd, { signal });
-      
-      // Detect iOS and permission requirements
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const needsPermission = isIOS && typeof DeviceOrientationEvent !== 'undefined' && 
-                              typeof DeviceOrientationEvent.requestPermission === 'function';
-      
-      if (!needsPermission) {
-        window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
-      }
-      
-      // Check gyroscope availability
-      function checkGyroscopeAvailability() {
-        if (typeof DeviceOrientationEvent === 'undefined') {
-          return false;
-        }
-        
-        if (needsPermission) {
-          return true;
-        }
-        
-        const isTouchDevice = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        return isTouchDevice || isMobileUA;
-      }
-      
-      const hasGyroscope = checkGyroscopeAvailability();
-      
-      // Gyroscope button setup
-      const gyroBtn = document.getElementById('gyroBtn');
-      const gyroControl = document.querySelector('.gyro-control');
-      
-      if (!hasGyroscope && gyroControl) {
-        gyroControl.style.setProperty('display', 'none', 'important');
-      } else if (isIOS && hasGyroscope && gyroControl) {
-        gyroControl.style.setProperty('display', 'block', 'important');
-      }
-      
-      let statusCheckInterval = null;
-      
-      if (gyroBtn) {
-        if (needsPermission) {
-          gyroBtn.textContent = 'Enable Gyroscope';
-        }
-        
-        const handleGyroClick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          if (!gyroEnabled) {
-            if (needsPermission) {
-              requestGyroPermission();
-              gyroBtn.textContent = 'Requesting Permission...';
-              gyroBtn.disabled = true;
-            } else {
-              enableGyroscope(true);
-            }
-          } else if (!hasGyroscope) {
-            useGyro = !useGyro;
-            gyroBtn.classList.toggle('active', useGyro);
-            
-            if (!useGyro) {
-              targetMouse.x = -1000;
-              targetMouse.y = -1000;
-            }
-          }
-        };
-        
-        gyroBtn.addEventListener('click', handleGyroClick, { signal });
-        gyroBtn.addEventListener('touchend', handleGyroClick, { signal });
-        
-        statusCheckInterval = setInterval(() => {
-          if (gyroEnabled && gyroCalibrated && gyroValidated) {
-            if (!useGyro) {
-              useGyro = true;
-            }
-            
-            if (hasGyroscope && gyroControl) {
-              gyroControl.style.setProperty('display', 'none', 'important');
-            }
-            
-            clearInterval(statusCheckInterval);
-          }
-        }, 100);
-        
-        setTimeout(() => {
-          if (gyroEnabled && gyroCalibrated && !gyroValidated) {
-            gyroValidated = true;
-            useGyro = true;
-            
-            if (hasGyroscope && gyroControl) {
-              gyroControl.style.setProperty('display', 'none', 'important');
-            }
-          }
-        }, 5000);
-      }
-      
-      // Auto-enable gyroscope on mobile
-      function autoEnableGyroscope() {
-        if (typeof DeviceOrientationEvent !== 'undefined') {
-          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                           (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
-          
-          if (isMobile && !needsPermission) {
-            setTimeout(() => enableGyroscope(true), 100);
-          } else if (isIOS && needsPermission) {
-            setTimeout(() => {
-              const testHandler = (e) => {
-                if (e.alpha !== null || e.beta !== null || e.gamma !== null) {
-                  window.removeEventListener('deviceorientation', testHandler);
-                  enableGyroscope(true);
-                  window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
-                  
-                  if (hasGyroscope && gyroControl) {
-                    gyroControl.style.setProperty('display', 'none', 'important');
-                  }
-                }
-              };
-              
-              window.addEventListener('deviceorientation', testHandler, { passive: true });
-              
-              setTimeout(() => {
-                window.removeEventListener('deviceorientation', testHandler);
-              }, 1000);
-            }, 500);
-          }
-        }
-      }
-      
-      autoEnableGyroscope();
-      
-      // Auto permission request on interaction (iOS)
-      if (needsPermission && typeof DeviceOrientationEvent !== 'undefined' && 
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        let permissionRequested = false;
-        
-        const requestOnInteraction = (e) => {
-          if (!gyroEnabled && !permissionRequested) {
-            permissionRequested = true;
-            
-            const gyroBtn = document.getElementById('gyroBtn');
-            if (gyroBtn) {
-              gyroBtn.textContent = 'Requesting Permission...';
-              gyroBtn.disabled = true;
-            }
-            
-            try {
-              requestGyroPermission();
-            } catch (error) {
-              permissionRequested = false;
-              if (gyroBtn) {
-                gyroBtn.textContent = 'Enable Gyroscope';
-                gyroBtn.disabled = false;
-              }
-            }
-            
-            ['touchstart', 'touchend', 'touchmove', 'pointerdown'].forEach(eventType => {
-              window.removeEventListener(eventType, requestOnInteraction, { capture: true });
-              document.removeEventListener(eventType, requestOnInteraction, { capture: true });
-            });
-          }
-        };
-        
-        if (!gyroEnabled) {
-          ['touchstart', 'touchend', 'touchmove', 'pointerdown'].forEach(eventType => {
-            window.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-            document.addEventListener(eventType, requestOnInteraction, { once: true, passive: true, capture: true });
-          });
-        }
-      }
       
       // Initialize
       resize();

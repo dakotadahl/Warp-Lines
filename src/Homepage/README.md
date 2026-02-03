@@ -1,10 +1,10 @@
-# Homepage Animation
+# Homepage Animation (GSAP)
 
-Canvas-based line field animation with gyroscope support.
+Canvas-based line field animation with GSAP. This is the **GSAP version** of the warp/line field; the legacy `requestAnimationFrame` version lives at `Homepage/index-legacy.html`.
 
 ## Development
 
-- Edit `index.html` directly
+- Edit `index-gsap.html` directly
 - Run `npm run build` to generate minified version
 - Run `npm run build:webflow` to build and prepare for Webflow deployment
 
@@ -16,7 +16,7 @@ Canvas-based line field animation with gyroscope support.
 
 ## File Structure
 
-- `index.html` - Source code (unminified, for development)
+- `index-gsap.html` - Source code (unminified, for development)
 - `dist/webflow/index.html` - Minified version (generated, gitignored)
 - `webflow-ready.html` - Temporary file for easy copy-paste (gitignored)
 

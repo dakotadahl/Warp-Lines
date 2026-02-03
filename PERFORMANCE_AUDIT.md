@@ -1,5 +1,5 @@
 # Performance Audit & Improvement Plan
-## Homepage/index.html
+## Homepage line field (src/Homepage/index-gsap.html, Homepage/index-legacy.html)
 
 **Date:** December 2024  
 **File Size:** ~1,422 lines (all inline)  
@@ -67,11 +67,10 @@
 
 ---
 
-### 3. **Excessive Event Listeners**
-**Issue:** Multiple redundant event listeners for gyroscope permission:
-- Lines 1350-1360: Same event listeners added to `window`, `document`, `body`, and `.container`
-- Multiple `setInterval` timers running simultaneously
-- Event listeners not always cleaned up properly
+### 3. **Event Listener Cleanup**
+**Issue:** Event listeners should be cleaned up where possible:
+- Use single targets where possible instead of duplicating on `window`, `document`, `body`
+- Ensure any intervals/timeouts are cleared when no longer needed
 
 **Impact:** Memory leaks, unnecessary CPU usage
 **Solution Priority:** MEDIUM-HIGH
@@ -107,7 +106,6 @@
 
 ### 5. **Memory Management Concerns**
 **Issue:** Potential memory leaks:
-- `gyroValidationSamples` array grows (filtered but could be optimized)
 - Event listeners may not be removed in all code paths
 - No cleanup on page unload
 
@@ -117,7 +115,6 @@
 **Recommendations:**
 - Add `beforeunload` handler to clean up listeners
 - **Webflow-specific:** Add cleanup on Webflow page navigation (listen for `wf-page-loaded` or similar)
-- Limit `gyroValidationSamples` array size more aggressively
 - Use `WeakMap` for event listener tracking
 - Profile memory usage with Chrome DevTools
 - **Webflow-specific:** Use IIFE to create isolated scope and prevent memory leaks from closures
@@ -127,14 +124,12 @@
 ## 🟡 Medium Priority Issues
 
 ### 6. **No Code Splitting / Conditional Loading**
-**Issue:** All functionality loads immediately, even if not used (gyroscope code on desktop)
+**Issue:** All functionality loads immediately when the script runs.
 
-**Impact:** Unnecessary JavaScript parsing/execution
+**Impact:** Unnecessary JavaScript parsing/execution if only parts are needed
 **Solution Priority:** MEDIUM
 
 **Webflow-Compatible Recommendations:**
-- ✅ **Conditional execution** - Wrap gyroscope code in feature detection: `if (hasGyroscope) { ... }`
-- ✅ **Lazy initialization** - Only initialize gyroscope code when needed (on button click)
 - ✅ **Feature flags** - Use early returns to skip unused code paths
 - ⚠️ **Note:** Cannot use dynamic imports in Webflow, but can conditionally execute code blocks
 - ✅ **Split logic** - Separate initialization from runtime (still inline, but organized)
@@ -269,10 +264,9 @@
 
 ### Phase 3 (Advanced - 4-8 hours)
 11. ✅ **Optimize noise calculations** - Cache noise values
-12. ✅ **Conditional gyroscope loading** - Only load/init when needed
-13. ✅ **Add performance monitoring** - Track FPS, detect issues
-14. ✅ **Lazy initialization** - Start animation after page load/idle
-15. ⚠️ **Web Workers** - Consider if browser support allows (may not work in all Webflow contexts)
+12. ✅ **Add performance monitoring** - Track FPS, detect issues
+13. ✅ **Lazy initialization** - Start animation after page load/idle
+14. ⚠️ **Web Workers** - Consider if browser support allows (may not work in all Webflow contexts)
 
 ---
 
@@ -396,22 +390,6 @@ function render(timestamp) {
 }
 ```
 
-### Optimization 6: Conditional Gyroscope Loading
-```javascript
-// Only initialize gyroscope code when needed
-function initGyroscope() {
-  if (!hasGyroscope) return; // Early return
-  
-  // All gyroscope code here
-  // This entire block can be skipped on desktop
-}
-
-// Call only when needed
-if (hasGyroscope) {
-  initGyroscope();
-}
-```
-
 ---
 
 ## 📈 Expected Performance Improvements
@@ -426,7 +404,6 @@ if (hasGyroscope) {
 | Frame rate limiting | 10-20% CPU reduction | Low | ✅ Yes |
 | Pause when hidden | 30-50% CPU when tab inactive | Low | ✅ Yes |
 | Adaptive quality | 20-40% better on low-end | Medium | ✅ Yes |
-| Conditional gyro loading | 5-10% parse time (desktop) | Medium | ✅ Yes |
 | Noise optimization | 5-15% CPU reduction | Medium | ✅ Yes |
 | Webflow integration | Prevents conflicts/leaks | Medium | ✅ Yes |
 | **Total Potential** | **40-60% performance improvement** | - | ✅ All compatible |

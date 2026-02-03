@@ -63,14 +63,6 @@ gsap.to(point, {
   }
 });
 
-// Smooth gyroscope transitions
-gsap.to(gyroTarget, {
-  x: targetX,
-  y: targetY,
-  duration: 0.1,
-  ease: "power2.out",
-  overwrite: true
-});
 ```
 
 ---
@@ -121,7 +113,6 @@ The GSAP version maintains:
 - ✅ Same line color and opacity
 - ✅ Same animation behavior
 - ✅ Mouse/touch tracking
-- ✅ Gyroscope support
 - ✅ Ambient noise and drift
 - ✅ Drag/wake effects
 - ✅ Responsive design

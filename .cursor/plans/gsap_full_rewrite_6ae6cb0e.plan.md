@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: gyro-integration
     content: Update gyroscope handling to use GSAP tweens for smooth transitions
-    status: completed
+    status: cancelled
   - id: testing
     content: Test across devices and browsers for visual parity and performance
     status: completed
@@ -71,7 +71,7 @@ Transform the current custom WebGL/Canvas implementation into a GSAP-powered ani
 ```mermaid
 graph TB
     ScrollTrigger[ScrollTrigger] -->|scrub convergence| ConvergenceTimeline[Convergence Timeline]
-    UserInput[Mouse/Gyro Input] -->|update targets| DragTimeline[Drag Effect Timeline]
+    UserInput[Mouse/Touch Input] -->|update targets| DragTimeline[Drag Effect Timeline]
     GSAPTicker[GSAP Ticker] -->|60fps updates| Render[Canvas 2D Render]
     
     ConvergenceTimeline -->|animate points| PointPositions[Point Positions]
@@ -100,7 +100,7 @@ graph TB
 
 #### Phase 2: Replace Animation Loop
 
-**File:** [`src/Homepage/index.html`](src/Homepage/index.html)Replace the current `requestAnimationFrame` loop (line 908-952) with:
+**File:** [`src/Homepage/index-gsap.html`](src/Homepage/index-gsap.html)Replace the current `requestAnimationFrame` loop (line 908-952) with:
 
 ```javascript
 // Use GSAP's ticker for render loop
@@ -266,9 +266,9 @@ function updatePointPosition(point, targetX, targetY) {
 - Remove WebGL rendering function (lines 854-906)
 - Keep only Canvas 2D rendering path (lines 833-851)
 
-#### Phase 8: Gyroscope Integration
+#### Phase 8: Gyroscope Integration (later removed from codebase)
 
-Keep gyroscope handling largely the same, but update targets via GSAP:
+Previously: keep gyroscope handling and update targets via GSAP. Gyroscope has since been removed from the project.
 
 ```javascript
 function handleDeviceOrientation(e) {
@@ -302,11 +302,11 @@ function handleDeviceOrientation(e) {
 
 - **None**: Visual output will remain identical
 - Same fallback behavior for devices without capabilities
-- All existing features preserved (mouse, touch, gyroscope, scroll)
+- All existing features preserved (mouse, touch, scroll)
 
 ### 8. Files to Modify
 
-Primary file: [`src/Homepage/index.html`](src/Homepage/index.html)
+Primary file: [`src/Homepage/index-gsap.html`](src/Homepage/index-gsap.html)
 
 - Add GSAP CDN links or npm packages
 - Replace render loop with GSAP ticker

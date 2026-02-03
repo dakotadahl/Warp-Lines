@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function build() {
-  const srcPath = path.join(__dirname, '../src/Homepage/index.html');
+  const srcPath = path.join(__dirname, '../src/Homepage/index-gsap.html');
   const distPath = path.join(__dirname, '../dist/webflow/index.html');
   
   // Ensure dist directory exists
