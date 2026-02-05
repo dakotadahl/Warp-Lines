@@ -155,14 +155,14 @@
         scrollWarpOverflowLeft: 20
       };
 
-      // Touch-primary device: gentler reaction (smaller zone, softer follow, weaker drag)
+      // Touch-primary device: gentler reaction (smaller zone, weaker drag) but responsive tracking
       const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches;
       if (isTouchPrimary) {
         CONFIG.cursorRadius = 120;
         CONFIG.wakeLength = 130;
         CONFIG.wakeLengthSquared = 130 * 130;
-        CONFIG.mouseSmoothing = 0.06;
-        CONFIG.velocitySmoothing = 0.08;
+        CONFIG.mouseSmoothing = 0.12;
+        CONFIG.velocitySmoothing = 0.15;
         CONFIG.baseStrength = 140;
         CONFIG.dragStrength = 8;
       }
