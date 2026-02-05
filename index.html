@@ -22,6 +22,11 @@
       body { min-height: 300vh; }
       .container { height: 100vh; }
     }
+
+    /* Mobile: no scroll, page height matches canvas */
+    @media (pointer: coarse) {
+      body { min-height: 100vh; min-height: 100dvh; overflow: hidden; }
+    }
     
     .dev-mode {
       position: fixed;
