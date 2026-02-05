@@ -608,15 +608,18 @@
       window.addEventListener('touchend', handleTouchEnd, { signal });
       window.addEventListener('touchcancel', handleTouchEnd, { signal });
       
-      function handleScroll() {
-        const scrollY = window.scrollY || document.documentElement.scrollTop;
-        const deltaY = Math.abs(scrollY - lastScrollY);
-        lastScrollY = scrollY;
-        if (deltaY > 0) {
-          scrollWarpAmount = Math.min(CONFIG.scrollWarpMax, scrollWarpAmount + CONFIG.scrollWarpIncrement);
+      // Scroll warp disabled on mobile (touch-primary) devices
+      if (!isTouchPrimary) {
+        function handleScroll() {
+          const scrollY = window.scrollY || document.documentElement.scrollTop;
+          const deltaY = Math.abs(scrollY - lastScrollY);
+          lastScrollY = scrollY;
+          if (deltaY > 0) {
+            scrollWarpAmount = Math.min(CONFIG.scrollWarpMax, scrollWarpAmount + CONFIG.scrollWarpIncrement);
+          }
         }
+        window.addEventListener('scroll', handleScroll, { passive: true, signal });
       }
-      window.addEventListener('scroll', handleScroll, { passive: true, signal });
       
       // Initialize
       resize();
