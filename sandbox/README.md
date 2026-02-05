@@ -1,6 +1,6 @@
 # Alluvium Sandbox Build
 
-This is a sandbox build of the Alluvium homepage design from Figma, converted to plain HTML/CSS/JavaScript.
+This is a sandbox build of the Alluvium homepage design from Figma, converted to plain HTML/CSS/JavaScript. Analysis notes (CDN vs local JSON, etc.) have been moved to the project **docs/** folder.
 
 ## Overview
 
