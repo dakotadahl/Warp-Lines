@@ -7,10 +7,12 @@
     "build": "node scripts/build-script.js",
     "build:webflow": "npm run build && node scripts/webflow-prep.js",
     "release": "node scripts/release.js",
-    "watch": "nodemon --watch src/Homepage --ext js,html --exec npm run build"
+    "serve": "npx serve . -p 3000",
+    "watch": "nodemon --watch src/Homepage --watch index.html --ext js,html --exec npm run build"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
+    "serve": "^14.2.4",
     "terser": "^5.46.0"
   },
   "keywords": [

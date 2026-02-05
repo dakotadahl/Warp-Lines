@@ -14,16 +14,16 @@ npm run build:webflow  # → build + copy script to clipboard + embed instructio
 
 ```
 Alluvium/
+├── index.html            # Warp-lines preview (GSAP + inline line field; open or npm run serve)
 ├── src/Homepage/
-│   ├── warp-lines.js     # Source: warp lines logic (container-based, GSAP)
-│   └── index-gsap.html   # Preview sandbox (loads GSAP + warp-lines.js)
+│   └── warp-lines.js     # Source: warp lines logic for dist/script.js (embed build)
 ├── dist/                 # Generated (gitignored)
 │   └── script.js         # Production script — embed this
 ├── scripts/
 │   ├── build-script.js   # Builds dist/script.js from warp-lines.js (terser)
 │   ├── webflow-prep.js   # Copies script + prints embed steps
 │   └── release.js        # Release helper (build + tag/prod instructions)
-├── sandbox/              # Full-page preview (Figma-derived HTML/CSS; optional)
+├── sandbox/              # Optional dev assets
 ├── docs/                 # Reference: audits, migration notes, legacy
 │   └── legacy/           # Legacy RAF version (index-legacy.html; no build)
 └── package.json
@@ -31,8 +31,8 @@ Alluvium/
 
 ## Development Workflow
 
-1. **Preview**: Open `src/Homepage/index-gsap.html` in a browser (or serve that folder). It loads `warp-lines.js` and auto-inits on `[data-warp-lines]`.
-2. **Edit**: Change `src/Homepage/warp-lines.js` for behavior; change `src/Homepage/index-gsap.html` for sandbox layout/styles.
+1. **Preview**: Open **index.html** in a browser, or run `npm run serve` and open http://localhost:3000. The warp-lines animation is inline in index.html (no build required for preview).
+2. **Edit**: Change **index.html** for preview behavior/layout; change `src/Homepage/warp-lines.js` for the embeddable script that builds to `dist/script.js`.
 3. **Build**: `npm run build` → minified `dist/script.js`.
 4. **Embed**: In production, load GSAP then `script.js`; add a container (see below).
 
@@ -60,6 +60,7 @@ Alluvium/
 |--------|-------------|
 | `npm run build` | Minify `warp-lines.js` → `dist/script.js` |
 | `npm run build:webflow` | Build + copy `dist/script.js` to clipboard + print embed steps |
+| `npm run serve` | Serve project root at http://localhost:3000 (so `index.html` loads by default) |
 | `npm run watch` | Rebuild on changes under `src/Homepage` |
 
 ## Git & production

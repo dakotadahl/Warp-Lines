@@ -42,7 +42,7 @@ Use [semver](https://semver.org/) if you like: **v1.0.0** (major.minor.patch). B
 ```bash
 # Feature work
 git checkout -b feature/my-change
-# ... edit src/Homepage/warp-lines.js, preview via index-gsap.html ...
+# ... edit src/Homepage/warp-lines.js or index.html, preview via index.html ...
 git add -A && git commit -m "Describe change"
 git checkout main && git merge feature/my-change
 

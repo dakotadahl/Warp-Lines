@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function build() {
-  const srcPath = path.join(__dirname, '../src/Homepage/index-gsap.html');
+  const srcPath = path.join(__dirname, '../index.html');
   const distPath = path.join(__dirname, '../dist/script.js');
 
   const distDir = path.dirname(distPath);
@@ -31,7 +31,7 @@ async function build() {
   const code = html.slice(scriptOpen + 8, scriptClose).trim();
   const originalSize = code.length;
 
-  console.log('📖 Extracting script from index-gsap.html');
+  console.log('📖 Extracting script from index.html');
   const result = await minify(code, {
     compress: {
       drop_console: true,

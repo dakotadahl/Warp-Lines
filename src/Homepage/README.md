@@ -1,35 +1,6 @@
-# Homepage Animation (GSAP)
+# Homepage — warp-lines source
 
-Canvas-based line field animation with GSAP. This is the **GSAP version** of the warp/line field; the legacy `requestAnimationFrame` version lives at `Homepage/index-legacy.html`.
+- **warp-lines.js** — Source for the embeddable script. Built to `dist/script.js` via `npm run build`. Used in production (Webflow) as a single script after GSAP.
+- **Preview** lives at the project root: **index.html** (inline warp-lines + GSAP; no build needed to run it).
 
-## Development
-
-- Edit `index-gsap.html` directly
-- Run `npm run build` to generate minified version
-- Run `npm run build:webflow` to build and prepare for Webflow deployment
-
-## Webflow Deployment
-
-1. Run `npm run build:webflow`
-2. Copy content from `dist/webflow/index.html` or `webflow-ready.html`
-3. Paste into Webflow custom code section (in Page Settings > Custom Code > Footer Code)
-
-## File Structure
-
-- `index-gsap.html` - Source code (unminified, for development)
-- `dist/webflow/index.html` - Minified version (generated, gitignored)
-- `webflow-ready.html` - Temporary file for easy copy-paste (gitignored)
-
-## Build Commands
-
-```bash
-# Build minified version
-npm run build
-
-# Build and prepare for Webflow (copies to clipboard on macOS)
-npm run build:webflow
-
-# Watch for changes and auto-build (optional)
-npm run watch
-```
-
+Legacy RAF version: `docs/legacy/index-legacy.html`. Build commands: see project root README (`npm run build`, `npm run build:webflow`, `npm run watch`).
