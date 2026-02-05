@@ -155,16 +155,16 @@
         scrollWarpOverflowLeft: 20
       };
 
-      // Touch-primary device: tune for finger interaction (larger wake, snappier follow)
+      // Touch-primary device: gentler reaction (smaller zone, softer follow, weaker drag)
       const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches;
       if (isTouchPrimary) {
-        CONFIG.cursorRadius = 220;
-        CONFIG.wakeLength = 260;
-        CONFIG.wakeLengthSquared = 260 * 260;
-        CONFIG.mouseSmoothing = 0.2;
-        CONFIG.velocitySmoothing = 0.22;
-        CONFIG.baseStrength = 380;
-        CONFIG.dragStrength = 20;
+        CONFIG.cursorRadius = 120;
+        CONFIG.wakeLength = 130;
+        CONFIG.wakeLengthSquared = 130 * 130;
+        CONFIG.mouseSmoothing = 0.06;
+        CONFIG.velocitySmoothing = 0.08;
+        CONFIG.baseStrength = 140;
+        CONFIG.dragStrength = 8;
       }
 
       // ============================================================================
