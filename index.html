@@ -250,9 +250,9 @@
       // ============================================================================
       function initLines() {
         lines = [];
-        
+
         const originalLineCount = 200;
-        const qualityMultiplier = isLowEndDevice ? 0.8 : 1.4;
+        const qualityMultiplier = isLowEndDevice ? 0.8 : (isTouchPrimary ? 0.6 : 1.4);
         const targetLineCount = Math.ceil(originalLineCount * qualityMultiplier);
         const overflowLeft = CONFIG.scrollWarpOverflowLeft || 0;
         const totalLineCount = targetLineCount + overflowLeft;
