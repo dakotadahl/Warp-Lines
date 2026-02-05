@@ -4,13 +4,14 @@
   "description": "Line Field animation for Webflow",
   "type": "module",
   "scripts": {
-    "build": "node scripts/minify.js",
+    "build": "node scripts/build-script.js",
     "build:webflow": "npm run build && node scripts/webflow-prep.js",
-    "watch": "nodemon --watch src --exec npm run build"
+    "release": "node scripts/release.js",
+    "watch": "nodemon --watch src/Homepage --ext js,html --exec npm run build"
   },
   "devDependencies": {
-    "html-minifier-terser": "^7.2.0",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "terser": "^5.46.0"
   },
   "keywords": [
     "webflow",
@@ -20,4 +21,3 @@
   "author": "",
   "license": "ISC"
 }
-

@@ -1,59 +1,74 @@
 # Alluvium
 
-Line Field animation component for Webflow.
+Warp lines canvas animation (GSAP). Production output is a single **script.js** for embedding; development uses a preview sandbox.
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Build minified version for Webflow
-npm run build:webflow
+npm run build          # → dist/script.js
+npm run build:webflow  # → build + copy script to clipboard + embed instructions
 ```
 
 ## Project Structure
 
 ```
 Alluvium/
-├── src/                    # Source code (unminified)
-│   └── Homepage/
-│       └── index-gsap.html   # Line field (GSAP) — main development source
-├── Homepage/
-│   └── index-legacy.html  # Line field (requestAnimationFrame) — legacy
-├── dist/                   # Generated files (gitignored)
-│   └── webflow/
-│       └── index.html     # Minified, Webflow-ready
-├── scripts/               # Build scripts
-│   ├── minify.js          # Minification script
-│   └── webflow-prep.js    # Webflow preparation script
-└── webflow-ready.html     # Temporary copy-paste file (gitignored)
+├── src/Homepage/
+│   ├── warp-lines.js     # Source: warp lines logic (container-based, GSAP)
+│   └── index-gsap.html   # Preview sandbox (loads GSAP + warp-lines.js)
+├── dist/                 # Generated (gitignored)
+│   └── script.js         # Production script — embed this
+├── scripts/
+│   ├── build-script.js   # Builds dist/script.js from warp-lines.js (terser)
+│   ├── webflow-prep.js   # Copies script + prints embed steps
+│   └── release.js        # Release helper (build + tag/prod instructions)
+├── sandbox/              # Full-page preview (Figma-derived HTML/CSS; optional)
+├── docs/                 # Reference: audits, migration notes, legacy
+│   └── legacy/           # Legacy RAF version (index-legacy.html; no build)
+└── package.json
 ```
 
 ## Development Workflow
 
-1. **Edit source code**: Make changes to `src/Homepage/index-gsap.html` (GSAP line field)
-2. **Build**: Run `npm run build` to generate minified version
-3. **Deploy**: Run `npm run build:webflow` and copy from `dist/webflow/index.html` or `webflow-ready.html`
-4. **Paste**: Copy the minified code into Webflow's custom code section
+1. **Preview**: Open `src/Homepage/index-gsap.html` in a browser (or serve that folder). It loads `warp-lines.js` and auto-inits on `[data-warp-lines]`.
+2. **Edit**: Change `src/Homepage/warp-lines.js` for behavior; change `src/Homepage/index-gsap.html` for sandbox layout/styles.
+3. **Build**: `npm run build` → minified `dist/script.js`.
+4. **Embed**: In production, load GSAP then `script.js`; add a container (see below).
+
+## Production Embed
+
+- **Requirement**: GSAP 3.12.x loaded before the script (e.g. CDN).
+- **Option A — auto-init**: Add a container with `data-warp-lines`; the script inits on DOM ready.
+  ```html
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <div data-warp-lines></div>
+  <script src="script.js"></script>
+  ```
+- **Option B — manual init**: No attribute; call after DOM ready.
+  ```html
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <div id="hero-canvas"></div>
+  <script src="script.js"></script>
+  <script> document.addEventListener('DOMContentLoaded', function() { initWarpLines({ container: '#hero-canvas' }); }); </script>
+  ```
+- Size the container (e.g. full viewport: `width: 100vw; height: 100vh`). The script creates the canvas inside it and fills the container.
 
 ## Build Commands
 
-- `npm run build` - Generate minified version in `dist/webflow/`
-- `npm run build:webflow` - Build + prepare for Webflow (creates `webflow-ready.html` and copies to clipboard on macOS)
-- `npm run watch` - Watch for changes and auto-build (requires nodemon)
+| Command | Description |
+|--------|-------------|
+| `npm run build` | Minify `warp-lines.js` → `dist/script.js` |
+| `npm run build:webflow` | Build + copy `dist/script.js` to clipboard + print embed steps |
+| `npm run watch` | Rebuild on changes under `src/Homepage` |
 
-## Webflow Integration
+## Git & production
 
-1. Run `npm run build:webflow`
-2. Open `webflow-ready.html` or copy from clipboard
-3. In Webflow: Page Settings > Custom Code > Footer Code
-4. Paste the minified HTML
+- **Branch strategy**: `main` is production-ready; feature work merges here. See **[WORKFLOW.md](WORKFLOW.md)** for branch strategy, release process, and tagging when you ship to Webflow.
+- **Release**: `npm run release` runs build + webflow prep and prints the git tag commands so you can record what’s live.
 
 ## Notes
 
-- Source code is kept unminified for readability
-- Minified files are gitignored (generated on demand)
-- Console.log statements are automatically removed during minification
-- See `PERFORMANCE_AUDIT.md` for optimization details
-
+- `dist/` is gitignored. Console is stripped in production build.
+- Legacy (non-GSAP) version: `docs/legacy/index-legacy.html`; not part of the script build.
+- Reference and audit docs live in `docs/` (see `docs/README.md`).

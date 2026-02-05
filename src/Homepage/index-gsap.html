@@ -6,22 +6,21 @@
   <title>Line Field - GSAP Native</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #2C1011; height: 100vh; height: 100dvh; margin: 0; overflow: visible; }
-    .container { 
-      position: fixed; 
-      left: 0; 
-      top: 0;
-      width: 100vw; 
+    body { background: #2C1011; min-height: 300vh; min-height: 300dvh; margin: 0; overflow-x: hidden; }
+    .container {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100vw;
       height: 100vh;
       height: 100dvh;
     }
     canvas { display: block; width: 100%; height: 100%; }
     
-    /* Fallback for browsers that don't support dvh */
     @supports not (height: 100dvh) {
-      .container { 
-        height: 100vh;
-      }
+      body { min-height: 300vh; }
+      .container { height: 100vh; }
     }
     
     .dev-mode {
@@ -142,7 +141,18 @@
         flowSpeed: 0.00001,
         pointVelocityDamping: 0.92,
         curlStrength: 0.4,
-        turbulenceScale: 0.003
+        turbulenceScale: 0.003,
+        // Scroll warp: pull toward bottom-right on scroll, decay to 0 when scroll stops
+        scrollWarpStrength: 0.16,
+        scrollWarpDecay: 0.1,
+        scrollWarpMax: 1,
+        scrollWarpIncrement: 0.2,
+        scrollWarpScaleX: 0.28,
+        scrollWarpScaleY: 0.28,
+        scrollWarpWaveFreqX: 1.2,
+        scrollWarpWaveFreqY: 1.5,
+        scrollWarpWaveSpeed: 0.0015,
+        scrollWarpOverflowLeft: 20
       };
 
       // ============================================================================
@@ -220,6 +230,8 @@
       const prevMouse = { x: -1000, y: -1000 };
       const velocity = { x: 0, y: 0 };
       const vanishingPoint = { x: 0, y: 0 };
+      let scrollWarpAmount = 0;
+      let lastScrollY = 0;
 
       // ============================================================================
       // Line Initialization
@@ -230,14 +242,16 @@
         const originalLineCount = 200;
         const qualityMultiplier = isLowEndDevice ? 0.8 : 1.4;
         const targetLineCount = Math.ceil(originalLineCount * qualityMultiplier);
+        const overflowLeft = CONFIG.scrollWarpOverflowLeft || 0;
+        const totalLineCount = targetLineCount + overflowLeft;
         const spacing = width / (targetLineCount + 1);
         
         const pointsPerLine = isLowEndDevice ? Math.floor(CONFIG.pointsPerLine * 0.8) : CONFIG.pointsPerLine;
         const pointStep = 1 / (pointsPerLine - 1);
         
-        for (let i = 0; i < targetLineCount; i++) {
-          const canvasX = spacing * (i + 1);
-          const normalizedX = (i + 1) / (targetLineCount + 1);
+        for (let i = 0; i < totalLineCount; i++) {
+          const canvasX = spacing * (i - overflowLeft + 1);
+          const normalizedX = (i - overflowLeft + 1) / (targetLineCount + 1);
           
           const line = {
             points: [],
@@ -249,7 +263,6 @@
           for (let j = 0; j < pointsPerLine; j++) {
             const t = j * pointStep;
             const y = t * height;
-            // Restore velocity properties for momentum (vx, vy)
             const point = { x: canvasX, y, vx: 0, vy: 0 };
             const restPoint = { x: canvasX, y, normalizedY: t };
             
@@ -318,6 +331,9 @@
         
         // Pre-calculate vertical flow effect
         const verticalFlowOffset = Math.sin(time * CONFIG.flowSpeed) * CONFIG.verticalFlow;
+        
+        // Scroll warp: decay toward 0 each frame.
+        scrollWarpAmount += (0 - scrollWarpAmount) * CONFIG.scrollWarpDecay;
         
         // Update each line
         for (let i = 0; i < lines.length; i++) {
@@ -412,9 +428,20 @@
               dragOffsetY = blendedY * strength * 0.4;
             }
             
-            // Calculate target position
-            const targetX = rest.x + ambientX + dragOffsetX;
-            const targetY = rest.y + ambientY + dragOffsetY;
+            // Scroll warp: wave-like deformation toward bottom-right (ripple / stream flow)
+            const warpPullX = (width - rest.x) / width;
+            const warpPullY = (height - rest.y) / height;
+            const wavePhase1 = normalizedX * Math.PI * 2 * CONFIG.scrollWarpWaveFreqX
+              + rest.normalizedY * Math.PI * 2 * CONFIG.scrollWarpWaveFreqY
+              + time * CONFIG.scrollWarpWaveSpeed;
+            const wavePhase2 = rest.normalizedY * Math.PI * 2 * 0.8 - normalizedX * Math.PI * 2 * 1 + time * 0.0008;
+            const waveFactor = 0.5 + 0.25 * Math.sin(wavePhase1) + 0.25 * Math.sin(wavePhase2);
+            const scrollWarpX = scrollWarpAmount * CONFIG.scrollWarpStrength * width * CONFIG.scrollWarpScaleX * warpPullX * waveFactor;
+            const scrollWarpY = scrollWarpAmount * CONFIG.scrollWarpStrength * height * CONFIG.scrollWarpScaleY * warpPullY * waveFactor;
+            
+            // Calculate target position (including scroll warp toward bottom-right)
+            const targetX = rest.x + ambientX + dragOffsetX + scrollWarpX;
+            const targetY = rest.y + ambientY + dragOffsetY + scrollWarpY;
             
             // Spring connection to adjacent points for fluidity
             let springForceX = 0;
@@ -560,6 +587,16 @@
       window.addEventListener('mouseleave', handleMouseLeave, { signal });
       window.addEventListener('touchmove', handleTouchMove, { passive: true, signal });
       window.addEventListener('touchend', handleTouchEnd, { signal });
+      
+      function handleScroll() {
+        const scrollY = window.scrollY || document.documentElement.scrollTop;
+        const deltaY = Math.abs(scrollY - lastScrollY);
+        lastScrollY = scrollY;
+        if (deltaY > 0) {
+          scrollWarpAmount = Math.min(CONFIG.scrollWarpMax, scrollWarpAmount + CONFIG.scrollWarpIncrement);
+        }
+      }
+      window.addEventListener('scroll', handleScroll, { passive: true, signal });
       
       // Initialize
       resize();
