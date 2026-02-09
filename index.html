@@ -574,8 +574,17 @@
         targetMouse.y = touch.clientY;
       }
 
+      function snapCursorTo(x, y) {
+        targetMouse.x = mouse.x = prevMouse.x = x;
+        targetMouse.y = mouse.y = prevMouse.y = y;
+        velocity.x = velocity.y = 0;
+      }
+
       function handleTouchStart(e) {
-        if (e.touches.length > 0) setTargetFromTouch(e.touches[0]);
+        if (e.touches.length > 0) {
+          const t = e.touches[0];
+          snapCursorTo(t.clientX, t.clientY);
+        }
       }
 
       function handleTouchMove(e) {
