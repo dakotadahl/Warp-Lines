@@ -27,6 +27,7 @@ Alluvium/
 ├── docs/                 # Reference: audits, migration notes, legacy
 │   └── legacy/           # Legacy RAF version (index-legacy.html; no build)
 └── package.json
+├── components/           # Reusable Webflow components (not part of the script build; copy-paste into Webflow)
 ```
 
 ## Development Workflow
@@ -40,28 +41,32 @@ Alluvium/
 
 - **Requirement**: GSAP 3.12.x loaded before the script (e.g. CDN).
 - **Option A — auto-init**: Add a container with `data-warp-lines`; the script inits on DOM ready.
-  ```html
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <div data-warp-lines></div>
-  <script src="script.js"></script>
-  ```
+    ```html
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <div data-warp-lines></div>
+    <script src="script.js"></script>
+    ```
 - **Option B — manual init**: No attribute; call after DOM ready.
-  ```html
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <div id="hero-canvas"></div>
-  <script src="script.js"></script>
-  <script> document.addEventListener('DOMContentLoaded', function() { initWarpLines({ container: '#hero-canvas' }); }); </script>
-  ```
+    ```html
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <div id="hero-canvas"></div>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initWarpLines({ container: '#hero-canvas' })
+        })
+    </script>
+    ```
 - Size the container (e.g. full viewport: `width: 100vw; height: 100vh`). The script creates the canvas inside it and fills the container.
 
 ## Build Commands
 
-| Command | Description |
-|--------|-------------|
-| `npm run build` | Minify `warp-lines.js` → `dist/script.js` |
-| `npm run build:webflow` | Build + copy `dist/script.js` to clipboard + print embed steps |
-| `npm run serve` | Serve project root at http://localhost:3000 (so `index.html` loads by default) |
-| `npm run watch` | Rebuild on changes under `src/Homepage` |
+| Command                 | Description                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `npm run build`         | Minify `warp-lines.js` → `dist/script.js`                                      |
+| `npm run build:webflow` | Build + copy `dist/script.js` to clipboard + print embed steps                 |
+| `npm run serve`         | Serve project root at http://localhost:3000 (so `index.html` loads by default) |
+| `npm run watch`         | Rebuild on changes under `src/Homepage`                                        |
 
 ## Git & production
 

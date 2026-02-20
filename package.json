@@ -1,25 +1,28 @@
 {
-  "name": "alluvium",
-  "version": "1.0.0",
-  "description": "Line Field animation for Webflow",
-  "type": "module",
-  "scripts": {
-    "build": "node scripts/build-script.js",
-    "build:webflow": "npm run build && node scripts/webflow-prep.js",
-    "release": "node scripts/release.js",
-    "serve": "npx serve . -p 3000",
-    "watch": "nodemon --watch src/Homepage --watch index.html --ext js,html --exec npm run build"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2",
-    "serve": "^14.2.4",
-    "terser": "^5.46.0"
-  },
-  "keywords": [
-    "webflow",
-    "animation",
-    "canvas"
-  ],
-  "author": "",
-  "license": "ISC"
+    "name": "alluvium",
+    "version": "1.0.0",
+    "description": "Line Field animation for Webflow",
+    "type": "module",
+    "scripts": {
+        "build": "node scripts/build-script.js",
+        "build:webflow": "npm run build && node scripts/webflow-prep.js",
+        "release": "node scripts/release.js",
+        "serve": "npx serve . -p 3000",
+        "watch": "nodemon --watch src/Homepage --watch index.html --ext js,html --exec npm run build"
+    },
+    "devDependencies": {
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.5",
+        "nodemon": "^3.0.2",
+        "prettier": "3.6.2",
+        "serve": "^14.2.4",
+        "terser": "^5.46.0"
+    },
+    "keywords": [
+        "webflow",
+        "animation",
+        "canvas"
+    ],
+    "author": "",
+    "license": "ISC"
 }
